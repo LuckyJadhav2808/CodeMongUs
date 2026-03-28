@@ -1,0 +1,234 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-body;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold text-on-surface;
+    line-height: 1.2;
+  }
+
+  ::selection {
+    @apply bg-secondary text-on-secondary;
+  }
+
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-container;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-outline;
+  }
+}
+
+@layer components {
+  /* === BUTTONS === */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-display font-bold rounded-full
+      border-3 border-on-surface px-6 py-3 text-sm
+      transition-all duration-150 select-none cursor-pointer
+      shadow-chunky-sm active:shadow-none active:translate-x-[2px] active:translate-y-[2px];
+  }
+
+  .btn-primary {
+    @apply btn text-on-primary;
+    background: linear-gradient(160deg, #ba0209, #ff7766);
+    border-color: #4f0001;
+    box-shadow: 3px 3px 0px #4f0001;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(160deg, #a40006, #ff5b4b);
+    box-shadow: 4px 4px 0px #4f0001;
+    transform: translate(-1px, -1px);
+  }
+  .btn-primary:active {
+    box-shadow: none;
+    transform: translate(3px, 3px);
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary text-on-secondary;
+    border-color: #001aa4;
+    box-shadow: 3px 3px 0px #001aa4;
+  }
+  .btn-secondary:hover {
+    @apply bg-secondary-dim;
+    box-shadow: 4px 4px 0px #001aa4;
+    transform: translate(-1px, -1px);
+  }
+  .btn-secondary:active {
+    box-shadow: none;
+    transform: translate(3px, 3px);
+  }
+
+  .btn-danger {
+    @apply btn bg-error text-on-primary;
+    border-color: #510017;
+    box-shadow: 3px 3px 0px #510017;
+  }
+  .btn-danger:hover {
+    @apply bg-error-container;
+    box-shadow: 4px 4px 0px #510017;
+    transform: translate(-1px, -1px);
+  }
+
+  .btn-ghost {
+    @apply btn bg-surface-lowest text-on-surface;
+    box-shadow: 3px 3px 0px #6e7886;
+  }
+  .btn-ghost:hover {
+    @apply bg-surface-low;
+  }
+
+  .btn-disabled {
+    @apply btn bg-surface-highest text-outline cursor-not-allowed opacity-60;
+    box-shadow: none;
+  }
+
+  /* === CARDS === */
+  .card {
+    @apply bg-surface-lowest border-3 border-on-surface rounded-2xl p-5 shadow-chunky;
+  }
+
+  .card-container {
+    @apply bg-surface-low border-3 border-on-surface rounded-2xl p-5 shadow-chunky;
+  }
+
+  /* === INPUTS === */
+  .input-field {
+    @apply w-full bg-surface-highest border-3 border-outline rounded-xl px-4 py-3
+      font-body text-on-surface placeholder:text-on-surface-variant
+      focus:outline-none focus:border-secondary transition-colors duration-200;
+  }
+
+  /* === BADGE === */
+  .badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full font-display font-bold text-xs
+      border-2 border-on-surface;
+  }
+  .badge-red {
+    @apply badge;
+    background-color: #ff7766;
+    color: #4f0001;
+  }
+  .badge-blue {
+    @apply badge;
+    background-color: #caceff;
+    color: #0e2bcf;
+  }
+  .badge-yellow {
+    @apply badge;
+    background-color: #fefe5e;
+    color: #4e4e00;
+  }
+
+  /* === SABOTAGE OVERLAY === */
+  .sabotage-overlay {
+    @apply fixed inset-0 pointer-events-none z-50;
+    animation: flashbang 1.5s ease-out forwards;
+  }
+
+  /* === TIMER WARNING === */
+  .timer-warning {
+    animation: pulse_warning 0.8s ease-in-out infinite;
+  }
+
+  /* === SCREEN SHAKE === */
+  .screen-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  /* === GLASSMORPHISM NAV === */
+  .glass-nav {
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* === CODE EDITOR CONTAINER === */
+  .editor-container {
+    @apply bg-on-surface rounded-2xl border-3 border-on-surface overflow-hidden;
+  }
+  .editor-header {
+    @apply bg-surface-highest px-4 py-2 flex items-center gap-3 border-b-3 border-on-surface;
+  }
+  .editor-dot {
+    @apply w-3 h-3 rounded-full border-2 border-on-surface;
+  }
+
+  /* === PLAYER CARD === */
+  .player-card {
+    @apply flex items-center gap-3 p-3 rounded-xl border-3 border-on-surface
+      bg-surface-lowest shadow-chunky-sm cursor-pointer
+      transition-all duration-150;
+  }
+  .player-card:hover {
+    @apply shadow-chunky;
+    transform: translate(-2px, -2px);
+  }
+  .player-card.selected {
+    @apply bg-secondary-container border-secondary;
+    box-shadow: 3px 3px 0px #001aa4;
+  }
+  .player-card.eliminated {
+    @apply opacity-50 line-through cursor-not-allowed;
+    filter: grayscale(0.7);
+  }
+
+  /* === VOTE BADGE === */
+  .vote-pip {
+    @apply w-5 h-5 rounded-full bg-primary border-2 border-on-surface inline-block;
+  }
+}
+
+@layer utilities {
+  .text-outline-black {
+    -webkit-text-stroke: 2px #262f3b;
+    paint-order: stroke fill;
+  }
+  .text-outline-white {
+    -webkit-text-stroke: 2px #ffffff;
+    paint-order: stroke fill;
+  }
+  .gradient-primary {
+    background: linear-gradient(160deg, #ba0209 0%, #ff7766 100%);
+  }
+  .gradient-secondary {
+    background: linear-gradient(160deg, #3046e3 0%, #caceff 100%);
+  }
+  .border-3 {
+    border-width: 3px;
+  }
+  .border-b-3 {
+    border-bottom-width: 3px;
+  }
+  .border-t-3 {
+    border-top-width: 3px;
+  }
+}

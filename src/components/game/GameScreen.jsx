@@ -1,0 +1,137 @@
+import { motion } from 'framer-motion';
+import Timer from './Timer';
+import CodeEditor from './CodeEditor';
+import PlayerSidebar from './PlayerSidebar';
+import ActionButtons from './ActionButtons';
+import ChatBox from '../lobby/ChatBox';
+import VotingModal from '../voting/VotingModal';
+import ImpostorDashboard from '../impostor/ImpostorDashboard';
+import useGameStore from '../../store/gameStore';
+
+export default function GameScreen() {
+  const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds } = useGameStore();
+
+  return (
+    <div className={`min-h-screen bg-surface flex flex-col ${activeSabotage === 'lag' ? 'screen-shake' : ''}`}>
+      {/* Top Header Bar */}
+      <motion.header
+        initial={{ y: -60 }}
+        animate={{ y: 0 }}
+        className="glass-nav border-b-3 border-on-surface px-6 py-3 flex items-center justify-between z-30 sticky top-0"
+      >
+        <div className="flex items-center gap-4">
+          <h1 className="font-display font-extrabold text-lg tracking-tight">
+            <span className="text-primary">{'<'}</span>
+            Code<span className="text-secondary">M👾ng</span>Us
+            <span className="text-primary">{'/>'}</span>
+          </h1>
+          <div className="hidden md:flex items-center gap-1 badge-yellow">
+            <span>🛸</span> Ship Integrity: {shipIntegrity}%
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <Timer initialSeconds={timerSeconds || 240} autoStart={true} label="MISSION TIME" />
+          <ActionButtons />
+        </div>
+      </motion.header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Prompt Panel */}
+        <motion.aside
+          initial={{ x: -280 }}
+          animate={{ x: 0 }}
+          transition={{ type: 'spring', stiffness: 200 }}
+          className="hidden lg:flex flex-col w-[280px] border-r-3 border-on-surface bg-surface-low shrink-0"
+        >
+          <div className="px-4 py-3 border-b-3 border-on-surface bg-surface-high">
+            <h3 className="font-display font-bold text-sm flex items-center gap-2">
+              <span>🎯</span> CODING PROMPT
+            </h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {prompt ? (
+              <>
+                <div>
+                  <h4 className="font-display font-bold text-base text-on-surface">{prompt.title}</h4>
+                  <p className="font-body text-sm text-on-surface-variant mt-2 leading-relaxed">{prompt.description}</p>
+                </div>
+                {prompt.functionSignature && (
+                  <div className="p-3 rounded-xl border-2 border-on-surface bg-on-surface">
+                    <p className="text-[10px] font-display font-bold text-gray-400 mb-1">FUNCTION SIGNATURE</p>
+                    <code className="font-mono text-sm text-green-400">{prompt.functionSignature}</code>
+                  </div>
+                )}
+                {prompt.testCases?.filter(tc => tc.visible).length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-display font-bold text-on-surface-variant mb-2">VISIBLE TEST CASES</p>
+                    {prompt.testCases.filter(tc => tc.visible).map((tc, i) => (
+                      <div key={i} className="p-2 rounded-lg border border-outline-variant mb-2 bg-surface-lowest">
+                        <p className="font-mono text-xs text-on-surface">{tc.input}</p>
+                        <p className="font-mono text-xs text-secondary">→ {tc.expected}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-on-surface-variant font-body text-center py-8">Loading prompt...</p>
+            )}
+          </div>
+        </motion.aside>
+
+        {/* Center: Code Editor */}
+        <main className="flex-1 flex flex-col p-4 min-w-0">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 card !p-3 !bg-secondary-container !border-secondary flex items-center gap-3"
+          >
+            <span className="text-lg">🎯</span>
+            <div>
+              <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: '#0e2bcf' }}>Current Prompt</p>
+              <p className="font-body text-sm text-on-surface font-medium">
+                {prompt?.title || 'Loading...'}
+              </p>
+            </div>
+          </motion.div>
+
+          <div className="flex-1 min-h-0">
+            <CodeEditor />
+          </div>
+        </main>
+
+        {/* Right: Player Sidebar + Chat */}
+        <motion.aside
+          initial={{ x: 320 }}
+          animate={{ x: 0 }}
+          transition={{ type: 'spring', stiffness: 200 }}
+          className="hidden xl:flex flex-col w-[320px] border-l-3 border-on-surface bg-surface-low shrink-0"
+        >
+          <div className="h-1/2 border-b-3 border-on-surface">
+            <PlayerSidebar />
+          </div>
+          <div className="h-1/2">
+            <ChatBox />
+          </div>
+        </motion.aside>
+      </div>
+
+      {/* Voting Modal Overlay */}
+      <VotingModal isOpen={showVoting} onClose={() => setShowVoting(false)} />
+
+      {/* Impostor Dashboard (toggled by Ctrl+I) */}
+      {showImpostorPanel && <ImpostorDashboard />}
+
+      {/* Flashbang Overlay */}
+      {activeSabotage === 'flashbang' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0.8, 0] }}
+          transition={{ duration: 5 }}
+          className="fixed inset-0 bg-white z-[200] pointer-events-none"
+        />
+      )}
+    </div>
+  );
+}

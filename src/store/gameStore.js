@@ -1,0 +1,402 @@
+import { create } from 'zustand';
+import { getSocket } from '../services/socket';
+import {
+  createUserDoc,
+  getUserDoc,
+  updateUserProfile,
+  updateUserStats,
+  addMatchRecord,
+  getMatchHistory,
+} from '../services/firestoreService';
+
+// Load profile from localStorage
+const loadProfile = () => {
+  try {
+    const saved = localStorage.getItem('codemongus_profile');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { avatarStyle: 'bottts-neutral', avatarSeed: '', displayName: '' };
+};
+
+const useGameStore = create((set, get) => ({
+  // ──────── AUTH ────────
+  user: null,
+  setUser: (user) => set({ user }),
+
+  // ──────── CURRENT SCREEN ────────
+  screen: 'login', // 'login' | 'lobby' | 'roleReveal' | 'game' | 'gameEnd'
+  setScreen: (screen) => set({ screen }),
+
+  // ──────── LOBBY TAB ────────
+  lobbyTab: 'lobby', // 'lobby' | 'profile'
+  setLobbyTab: (tab) => set({ lobbyTab: tab }),
+
+  // ──────── PLAYER PROFILE ────────
+  profile: loadProfile(),
+  setProfile: (updates) => set((s) => {
+    const newProfile = { ...s.profile, ...updates };
+    try { localStorage.setItem('codemongus_profile', JSON.stringify(newProfile)); } catch {}
+    return { profile: newProfile };
+  }),
+
+  // ──────── USER STATS (from Firestore) ────────
+  userStats: {
+    gamesPlayed: 0, gamesWon: 0, gamesLost: 0,
+    timesImpostor: 0, timesCrewmate: 0,
+    impostorWins: 0, crewmateWins: 0,
+    totalVotesCast: 0, correctVotes: 0,
+    timesSabotaged: 0, bugReports: 0,
+    totalPlayTimeMs: 0,
+  },
+  setUserStats: (stats) => set({ userStats: stats }),
+
+  // ──────── MATCH HISTORY ────────
+  matchHistory: [],
+  setMatchHistory: (matches) => set({ matchHistory: matches }),
+
+  // ──────── FIRESTORE ACTIONS ────────
+  loadUserData: async (uid) => {
+    try {
+      const userData = await getUserDoc(uid);
+      if (userData) {
+        // Hydrate profile
+        const profileUpdate = {
+          displayName: userData.displayName || '',
+          avatarStyle: userData.avatarStyle || 'bottts-neutral',
+          avatarSeed: userData.avatarSeed || '',
+        };
+        set((s) => {
+          const merged = { ...s.profile, ...profileUpdate };
+          try { localStorage.setItem('codemongus_profile', JSON.stringify(merged)); } catch {}
+          return { profile: merged };
+        });
+
+        // Hydrate stats
+        if (userData.stats) {
+          set({ userStats: userData.stats });
+        }
+
+        // Load match history
+        const matches = await getMatchHistory(uid, 20);
+        set({ matchHistory: matches });
+      }
+    } catch (err) {
+      console.error('Failed to load user data from Firestore:', err);
+    }
+  },
+
+  saveProfileToFirestore: async (profileData) => {
+    const { user } = get();
+    if (!user?.uid) return;
+    try {
+      await updateUserProfile(user.uid, profileData);
+    } catch (err) {
+      console.error('Failed to save profile to Firestore:', err);
+    }
+  },
+
+  recordGameEnd: async (matchData) => {
+    const { user } = get();
+    if (!user?.uid) return;
+    try {
+      // Determine stat increments
+      const isWin = matchData.result === 'win';
+      const isImpostor = matchData.role === 'impostor';
+      const statUpdates = {
+        gamesPlayed: 1,
+        gamesWon: isWin ? 1 : 0,
+        gamesLost: isWin ? 0 : 1,
+        timesImpostor: isImpostor ? 1 : 0,
+        timesCrewmate: isImpostor ? 0 : 1,
+        impostorWins: isImpostor && isWin ? 1 : 0,
+        crewmateWins: !isImpostor && isWin ? 1 : 0,
+        totalPlayTimeMs: matchData.durationMs || 0,
+      };
+
+      await updateUserStats(user.uid, statUpdates);
+      await addMatchRecord(user.uid, matchData);
+
+      // Refresh local state
+      const freshData = await getUserDoc(user.uid);
+      if (freshData?.stats) set({ userStats: freshData.stats });
+      const matches = await getMatchHistory(user.uid, 20);
+      set({ matchHistory: matches });
+    } catch (err) {
+      console.error('Failed to record game end:', err);
+    }
+  },
+
+  // ──────── ROOM ────────
+  roomCode: null,
+  hostUid: null,
+  players: [],
+
+  // ──────── GAME STATE ────────
+  myRole: null,
+  prompt: null,
+  timerSeconds: 0,
+  gameResult: null,
+  testResults: null,
+  gameStartTime: null,
+
+  // ──────── UI TOGGLES ────────
+  showVoting: false,
+  setShowVoting: (show) => set({ showVoting: show }),
+  showImpostorPanel: false,
+  toggleImpostorPanel: () => set((s) => ({ showImpostorPanel: !s.showImpostorPanel })),
+  showRoleReveal: false,
+  setShowRoleReveal: (show) => set({ showRoleReveal: show }),
+
+  // ──────── SABOTAGE ────────
+  activeSabotage: null,
+
+  // ──────── VOTING ────────
+  voteData: null,   // { alivePlayers, meetingNumber, duration }
+  voteResult: null,  // { tally, eliminated, skipped }
+
+  // ──────── CHAT ────────
+  chatMessages: [],
+
+  // ──────── SHIP INTEGRITY (cosmetic) ────────
+  shipIntegrity: 100,
+
+  // ═══════════════════════════════════════════════
+  //  SOCKET ACTIONS — emit events to the server
+  // ═══════════════════════════════════════════════
+
+  createRoom: (username) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('room:create', { username }, (res) => {
+      if (res.success) {
+        set({
+          roomCode: res.roomCode,
+          screen: 'lobby',
+          hostUid: res.state.hostUid,
+          players: res.state.players,
+        });
+      } else {
+        console.error('Create room failed:', res.error);
+      }
+    });
+  },
+
+  joinRoom: (roomCode, username) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('room:join', { roomCode, username }, (res) => {
+      if (res.success) {
+        set({
+          roomCode,
+          screen: 'lobby',
+          hostUid: res.state.hostUid,
+          players: res.state.players,
+        });
+      } else {
+        console.error('Join room failed:', res.error);
+        alert(res.error || 'Failed to join room');
+      }
+    });
+  },
+
+  leaveRoom: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('room:leave', null, () => {
+      set({ roomCode: null, screen: 'lobby', players: [], hostUid: null, myRole: null, prompt: null, chatMessages: [] });
+    });
+  },
+
+  startGame: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('game:start', null, (res) => {
+      if (!res.success) {
+        alert(res.error || 'Failed to start game');
+      }
+    });
+  },
+
+  reportBug: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('game:reportBug', null, (res) => {
+      if (!res.success) console.error('Report bug failed:', res.error);
+    });
+  },
+
+  castVote: (targetUid) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('vote:cast', { targetUid }, (res) => {
+      if (!res.success) console.error('Vote failed:', res.error);
+    });
+  },
+
+  skipVote: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('vote:skip', null, (res) => {
+      if (!res.success) console.error('Skip vote failed:', res.error);
+    });
+  },
+
+  useSabotage: (abilityId) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('sabotage:use', { abilityId }, (res) => {
+      if (!res.success) {
+        alert(res.error || 'Sabotage failed');
+      }
+    });
+  },
+
+  sendChat: (message) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('chat:send', { message });
+  },
+
+  submitCode: (code) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('game:submitCode', { code });
+  },
+
+  // ═══════════════════════════════════════════════
+  //  SOCKET LISTENERS — called once after connect
+  // ═══════════════════════════════════════════════
+
+  initSocketListeners: () => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Full state sync
+    socket.on('game:state', (state) => {
+      set({
+        players: state.players,
+        hostUid: state.hostUid,
+        roomCode: state.roomCode,
+        timerSeconds: state.timerRemaining,
+      });
+    });
+
+    // Role reveal (private per-player)
+    socket.on('game:roleReveal', ({ role, prompt }) => {
+      set({ myRole: role, prompt, screen: 'roleReveal', showRoleReveal: true });
+      // After reveal animation, transition to game
+      setTimeout(() => {
+        set({ screen: 'game', showRoleReveal: false });
+      }, 4500);
+    });
+
+    // Coding phase start
+    socket.on('game:codingStart', ({ prompt, duration }) => {
+      set({ prompt, screen: 'game', timerSeconds: duration, gameStartTime: Date.now() });
+    });
+
+    // Timer tick
+    socket.on('timer:tick', ({ seconds }) => {
+      set({ timerSeconds: seconds });
+    });
+
+    // Voting start
+    socket.on('game:votingStart', ({ meetingNumber, duration, alivePlayers }) => {
+      set({
+        showVoting: true,
+        voteData: { alivePlayers, meetingNumber, duration },
+        voteResult: null,
+      });
+    });
+
+    // Vote update (anonymous count)
+    socket.on('game:voteUpdate', (data) => {
+      // Could display a "X/Y voted" indicator
+    });
+
+    // Vote result
+    socket.on('game:voteResult', (result) => {
+      set({ voteResult: result });
+      // Keep voting modal open for 3s to show result, then close
+      setTimeout(() => {
+        set({ showVoting: false, voteResult: null });
+      }, 4000);
+    });
+
+    // Meeting called
+    socket.on('game:meetingCalled', ({ calledBy }) => {
+      console.log(`🚨 Meeting called by ${calledBy.username}`);
+    });
+
+    // Build phase
+    socket.on('game:buildStart', () => {
+      set({ showVoting: false });
+    });
+
+    // Game end
+    socket.on('game:end', ({ winner, players, testResults }) => {
+      const { myRole, roomCode: storeRoomCode, gameStartTime } = get();
+      const isWin = (myRole === 'impostor' && winner === 'impostor') ||
+                    (myRole === 'crewmate' && winner === 'crewmates');
+      const durationMs = gameStartTime ? Date.now() - gameStartTime : 0;
+
+      set({
+        gameResult: winner,
+        players,
+        testResults,
+        screen: 'gameEnd',
+        showVoting: false,
+        showImpostorPanel: false,
+      });
+
+      // Auto-record match to Firestore
+      get().recordGameEnd({
+        role: myRole || 'crewmate',
+        result: isWin ? 'win' : 'loss',
+        roomCode: storeRoomCode || '',
+        playerCount: players?.length || 0,
+        durationMs,
+      });
+    });
+
+    // Host changed
+    socket.on('game:hostChanged', ({ newHostUid }) => {
+      set({ hostUid: newHostUid });
+    });
+
+    // Chat
+    socket.on('chat:message', (msg) => {
+      set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
+    });
+
+    // ──── SABOTAGE EFFECTS (received by crewmates) ────
+    socket.on('sabotage:flashbang', ({ duration }) => {
+      set({ activeSabotage: 'flashbang' });
+      setTimeout(() => set({ activeSabotage: null }), duration);
+    });
+    socket.on('sabotage:typo', () => {
+      set({ activeSabotage: 'typo' });
+      setTimeout(() => set({ activeSabotage: null }), 500);
+    });
+    socket.on('sabotage:ghost', ({ duration }) => {
+      set({ activeSabotage: 'ghost' });
+      setTimeout(() => set({ activeSabotage: null }), duration);
+    });
+    socket.on('sabotage:lag', ({ duration }) => {
+      set({ activeSabotage: 'lag' });
+      setTimeout(() => set({ activeSabotage: null }), duration);
+    });
+
+    // Sabotage confirmed (received by impostor)
+    socket.on('sabotage:confirmed', ({ ability, cooldown }) => {
+      console.log(`🔧 Sabotage ${ability} confirmed. Cooldown: ${cooldown}s`);
+    });
+
+    // Player disconnected
+    socket.on('player:disconnected', ({ uid, username }) => {
+      console.log(`⚠️ ${username} disconnected`);
+    });
+  },
+}));
+
+export default useGameStore;
