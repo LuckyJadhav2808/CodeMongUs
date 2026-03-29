@@ -297,12 +297,17 @@ const useGameStore = create((set, get) => ({
 
     // Full state sync
     socket.on('game:state', (state) => {
-      set({
-        players: state.players,
+      const currentScreen = get().screen;
+      // Don't overwrite players on gameEnd — game:end already set them WITH role data
+      const updates = {
         hostUid: state.hostUid,
         roomCode: state.roomCode,
         timerSeconds: state.timerRemaining,
-      });
+      };
+      if (currentScreen !== 'gameEnd') {
+        updates.players = state.players;
+      }
+      set(updates);
     });
 
     // Role reveal (private per-player)

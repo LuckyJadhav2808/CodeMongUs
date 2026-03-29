@@ -4,12 +4,22 @@ export function useTimer(initialSeconds = 240) {
   const [seconds, setSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef(null);
+  const prevInitialRef = useRef(initialSeconds);
 
   const start = useCallback(() => setIsRunning(true), []);
   const pause = useCallback(() => setIsRunning(false), []);
   const reset = useCallback((newTime) => {
     setSeconds(newTime ?? initialSeconds);
     setIsRunning(false);
+  }, [initialSeconds]);
+
+  // Reset when initialSeconds changes significantly (e.g., coding phase starts)
+  useEffect(() => {
+    const diff = Math.abs(initialSeconds - prevInitialRef.current);
+    if (diff > 5) {
+      setSeconds(initialSeconds);
+    }
+    prevInitialRef.current = initialSeconds;
   }, [initialSeconds]);
 
   useEffect(() => {
