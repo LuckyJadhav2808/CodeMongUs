@@ -55,6 +55,7 @@ export function useYjs(roomCode, username = 'Player') {
     listeners: new Set(),
   });
   const [isConnected, setIsConnected] = useState(false);
+  const [awarenessVersion, setAwarenessVersion] = useState(0);
   const clientIdRef = useRef(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   // Broadcast local awareness state
@@ -104,6 +105,8 @@ export function useYjs(roomCode, username = 'Player') {
       console.log(`📝 Yjs connected to room ${roomCode} as ${username}`);
       // Announce ourselves via awareness
       broadcastAwareness();
+      // Re-announce again after 1s to catch any missed broadcasts during initial sync
+      setTimeout(() => broadcastAwareness(), 1000);
     };
 
     ws.onmessage = (event) => {
@@ -113,7 +116,8 @@ export function useYjs(roomCode, username = 'Player') {
         const payload = data.slice(1);
 
         if (msgType === MSG_DOC_UPDATE) {
-          Y.applyUpdate(doc, payload);
+          // Mark as 'remote' so our update handler doesn't echo it back
+          Y.applyUpdate(doc, payload, 'remote');
         } else if (msgType === MSG_AWARENESS) {
           const text = new TextDecoder().decode(payload);
           const { clientId: remoteId, user } = JSON.parse(text);
@@ -127,8 +131,9 @@ export function useYjs(roomCode, username = 'Player') {
           } else {
             awareness.states.set(remoteId, user);
           }
-          // Notify all listeners
+          // Notify all listeners AND bump version for React re-renders
           awareness.listeners.forEach((fn) => fn());
+          setAwarenessVersion(v => v + 1);
         }
       } catch (err) {
         console.error('Yjs message error:', err);
@@ -146,7 +151,7 @@ export function useYjs(roomCode, username = 'Player') {
 
     // Listen for local doc changes and send tagged updates
     const updateHandler = (update, origin) => {
-      if (origin === 'remote') return;
+      if (origin === 'remote') return; // Don't echo remote updates back
       if (ws.readyState === WebSocket.OPEN) {
         const tagged = new Uint8Array(1 + update.length);
         tagged[0] = MSG_DOC_UPDATE;
@@ -156,10 +161,10 @@ export function useYjs(roomCode, username = 'Player') {
     };
     doc.on('update', updateHandler);
 
-    // Periodically re-broadcast awareness (heartbeat)
+    // Periodically re-broadcast awareness (heartbeat every 2s for faster cursor updates)
     const heartbeat = setInterval(() => {
       broadcastAwareness();
-    }, 5000);
+    }, 2000);
 
     // Cleanup
     return () => {
@@ -187,6 +192,7 @@ export function useYjs(roomCode, username = 'Player') {
     yText,
     isConnected,
     awareness: awarenessRef.current,
+    awarenessVersion,
     clientId: clientIdRef.current,
     broadcastAwareness,
     getText,

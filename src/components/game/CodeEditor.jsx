@@ -102,7 +102,7 @@ function bindYTextToMonaco(yText, yDoc, editor) {
 export default function CodeEditor() {
   const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings, setEditorCode } = useGameStore();
   const displayName = profile?.displayName || user?.name || 'Player';
-  const { yDoc, yText, isConnected, awareness, broadcastAwareness } = useYjs(roomCode, displayName);
+  const { yDoc, yText, isConnected, awareness, awarenessVersion, broadcastAwareness } = useYjs(roomCode, displayName);
   // Language is locked to host's selection from game settings
   const lang = gameSettings?.language || 'javascript';
   const monacoLang = lang === 'cpp' ? 'cpp' : lang;
@@ -130,10 +130,12 @@ export default function CodeEditor() {
     };
 
     awareness.listeners.add(onAwarenessChange);
+    // Also run immediately to pick up any existing states
+    onAwarenessChange();
     return () => {
       awareness.listeners.delete(onAwarenessChange);
     };
-  }, [awareness]);
+  }, [awareness, awarenessVersion]);
 
   // Track local cursor position and broadcast via awareness
   useEffect(() => {
@@ -162,9 +164,15 @@ export default function CodeEditor() {
       }
     });
 
+    // Also broadcast cursor on every content change (typing)
+    const contentDisposable = editor.onDidChangeModelContent(() => {
+      broadcastAwareness();
+    });
+
     return () => {
       disposable.dispose();
       selDisposable.dispose();
+      contentDisposable.dispose();
     };
   }, [editorReady, awareness, broadcastAwareness]);
 
