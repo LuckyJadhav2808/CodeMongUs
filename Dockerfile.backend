@@ -2,14 +2,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files from server directory
-COPY package.json package-lock.json ./
+# Copy server package files and install production dependencies
+COPY server/package.json server/package-lock.json ./
 
-# Install production dependencies only
 RUN npm ci --omit=dev
 
 # Copy server source code
-COPY src/ ./src/
+COPY server/src/ ./src/
 
 # Back4App will use PORT env var; default to 3000
 ENV PORT=3000
