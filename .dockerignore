@@ -1,0 +1,12 @@
+node_modules
+dist
+server
+npm-debug.log*
+.env
+.env.local
+.env.production.local
+.git
+.gitignore
+*.md
+codesus-*.json
+.gemini
