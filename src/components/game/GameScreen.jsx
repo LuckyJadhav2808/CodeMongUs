@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Timer from './Timer';
 import CodeEditor from './CodeEditor';
 import PlayerSidebar from './PlayerSidebar';
@@ -12,10 +12,20 @@ import useGameStore from '../../store/gameStore';
 export default function GameScreen() {
   const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds } = useGameStore();
   const [timerExpired, setTimerExpired] = useState(false);
+  const [codingStarted, setCodingStarted] = useState(false);
+  const prevTimerRef = useRef(timerSeconds);
+
+  // Detect when the coding phase truly starts (timerSeconds jumps to a large value)
+  useEffect(() => {
+    if (!codingStarted && timerSeconds > 30) {
+      setCodingStarted(true);
+    }
+    prevTimerRef.current = timerSeconds;
+  }, [timerSeconds, codingStarted]);
 
   const handleTimerExpire = () => {
+    if (!codingStarted) return; // ignore expiry before coding phase
     setTimerExpired(true);
-    // Server will handle the phase transition — show a waiting state
   };
 
   return (
@@ -37,7 +47,7 @@ export default function GameScreen() {
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <Timer initialSeconds={timerSeconds || 240} autoStart={true} label="MISSION TIME" onExpire={handleTimerExpire} />
+          <Timer initialSeconds={codingStarted ? timerSeconds : 240} autoStart={codingStarted} label="MISSION TIME" onExpire={handleTimerExpire} />
           <ActionButtons />
         </div>
       </motion.header>

@@ -202,7 +202,7 @@ export default function LobbyScreen() {
                 </div>
 
                 {/* Chat */}
-                <div className="lg:col-span-1 h-[500px] lg:h-auto">
+                <div className="lg:col-span-1 lg:self-start lg:sticky lg:top-4" style={{ maxHeight: '500px' }}>
                   <ChatBox />
                 </div>
               </div>
