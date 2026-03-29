@@ -178,6 +178,9 @@ const useGameStore = create((set, get) => ({
   // ──────── CHAT ────────
   chatMessages: [],
 
+  // ──────── HINTS ────────
+  unlockedHints: [],
+
   // ──────── SHIP INTEGRITY (cosmetic) ────────
   shipIntegrity: 100,
 
@@ -225,6 +228,20 @@ const useGameStore = create((set, get) => ({
     if (!socket) return;
     socket.emit('room:leave', null, () => {
       set({ roomCode: null, screen: 'lobby', players: [], hostUid: null, myRole: null, prompt: null, chatMessages: [] });
+    });
+  },
+
+  leaveGame: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('game:leave', null, () => {
+      set({
+        roomCode: null, screen: 'lobby', players: [], hostUid: null,
+        myRole: null, prompt: null, chatMessages: [],
+        commitProposal: null, editorCode: '',
+        showVoting: false, showImpostorPanel: false,
+        gameResult: null, testResults: null,
+      });
     });
   },
 
@@ -296,6 +313,16 @@ const useGameStore = create((set, get) => ({
     const socket = getSocket();
     if (!socket) return;
     socket.emit('commit:respond', { approve });
+  },
+
+  requestHint: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('game:requestHint', null, (res) => {
+      if (!res.success) {
+        console.log(res.error || 'No more hints');
+      }
+    });
   },
 
   fetchPrompts: () => {
@@ -454,6 +481,25 @@ const useGameStore = create((set, get) => ({
     // Player disconnected
     socket.on('player:disconnected', ({ uid, username }) => {
       console.log(`⚠️ ${username} disconnected`);
+    });
+
+    // Player voluntarily left mid-game
+    socket.on('player:left', ({ uid, username, role }) => {
+      set((s) => ({
+        players: s.players.map(p => p.uid === uid ? { ...p, status: 'left' } : p),
+      }));
+    });
+
+    // Game forcibly ended (player left making game unviable)
+    socket.on('game:forceEnd', ({ reason, winner }) => {
+      set({ gameResult: { winner, reason, forced: true } });
+    });
+
+    // Hint received
+    socket.on('game:hintReceived', ({ hint, hintNumber, totalHints }) => {
+      set((s) => ({
+        unlockedHints: [...s.unlockedHints, { hint, hintNumber, totalHints }],
+      }));
     });
 
     // ──── COMMIT PROPOSAL (consensus) ────

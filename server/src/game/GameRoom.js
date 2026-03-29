@@ -82,6 +82,47 @@ export default class GameRoom {
     this.broadcastState();
   }
 
+  /**
+   * Handle a player leaving mid-game.
+   * Marks them as 'left' (not alive) and checks if the game should end.
+   */
+  leaveGameMidMatch(uid) {
+    const player = this.players.get(uid);
+    if (!player) return;
+
+    // Mark as left so they don't count toward alive players
+    player.status = 'left';
+
+    this.io.to(this.roomCode).emit('player:left', {
+      uid,
+      username: player.username,
+      role: player.role,
+    });
+
+    // Check if game is still viable
+    const alive = this.getAlivePlayers();
+    const impostorsAlive = alive.filter(p => p.role === 'impostor').length;
+    const crewmatesAlive = alive.filter(p => p.role === 'crewmate').length;
+
+    if (impostorsAlive === 0) {
+      this.winner = 'crewmates';
+      this.io.to(this.roomCode).emit('game:forceEnd', {
+        reason: 'Impostor left the game',
+        winner: 'crewmates',
+      });
+      setTimeout(() => this.transitionTo('gameEnd'), 1500);
+    } else if (crewmatesAlive === 0 || impostorsAlive >= crewmatesAlive) {
+      this.winner = 'impostor';
+      this.io.to(this.roomCode).emit('game:forceEnd', {
+        reason: 'Not enough crewmates to continue',
+        winner: 'impostor',
+      });
+      setTimeout(() => this.transitionTo('gameEnd'), 1500);
+    } else {
+      this.broadcastState();
+    }
+  }
+
   reconnectPlayer(uid, socketId) {
     const player = this.players.get(uid);
     if (!player) return false;

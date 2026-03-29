@@ -11,7 +11,7 @@ import CommitVotingModal from './CommitVotingModal';
 import useGameStore from '../../store/gameStore';
 
 export default function GameScreen() {
-  const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds } = useGameStore();
+  const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds, unlockedHints } = useGameStore();
   const [timerExpired, setTimerExpired] = useState(false);
   const [codingStarted, setCodingStarted] = useState(false);
   const prevTimerRef = useRef(timerSeconds);
@@ -113,6 +113,25 @@ export default function GameScreen() {
               </p>
             </div>
           </motion.div>
+
+          {/* Unlocked Hints */}
+          {unlockedHints && unlockedHints.length > 0 && (
+            <div className="mb-3 space-y-1">
+              {unlockedHints.map((h, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="card !p-2 !py-1.5 !bg-tertiary-container !border-tertiary flex items-center gap-2"
+                >
+                  <span className="text-sm">💡</span>
+                  <p className="text-xs font-body text-on-surface">
+                    <span className="font-bold">Hint {h.hintNumber}:</span> {h.hint}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           <div className="flex-1 min-h-0">
             <CodeEditor />

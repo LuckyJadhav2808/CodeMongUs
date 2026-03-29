@@ -2,7 +2,7 @@
  * Socket.io event handler registration.
  * Maps incoming events to GameManager/GameRoom methods.
  */
-import { getCatalogList } from '../data/promptCatalog.js';
+import { getCatalogList, getHints } from '../data/promptCatalog.js';
 export function registerSocketHandlers(io, gameManager) {
   io.on('connection', (socket) => {
     const user = socket.user;
@@ -41,6 +41,22 @@ export function registerSocketHandlers(io, gameManager) {
       callback?.({ success: true });
     });
 
+    // Leave mid-game (voluntary quit)
+    socket.on('game:leave', (_, callback) => {
+      if (!currentRoom) return callback?.({ success: false });
+      const room = gameManager.getRoom(currentRoom);
+      if (!room) return callback?.({ success: false });
+
+      if (room.phase !== 'lobby' && room.phase !== 'gameEnd') {
+        room.leaveGameMidMatch(user.uid);
+      } else {
+        gameManager.leaveRoom(currentRoom, user.uid);
+      }
+      socket.leave(currentRoom);
+      currentRoom = null;
+      callback?.({ success: true });
+    });
+
     socket.on('room:list', (_, callback) => {
       callback?.({ rooms: gameManager.getRoomList() });
     });
@@ -73,6 +89,37 @@ export function registerSocketHandlers(io, gameManager) {
       callback?.({ prompts: getCatalogList() });
     });
 
+    // ──────── HINTS ────────
+
+    socket.on('game:requestHint', (_, callback) => {
+      if (!currentRoom) return callback?.({ success: false });
+      const room = gameManager.getRoom(currentRoom);
+      if (!room || !room.prompt) return callback?.({ success: false });
+
+      // Only crewmates can request hints
+      const player = room.players.get(user.uid);
+      if (!player || player.role !== 'crewmate') return callback?.({ success: false, error: 'Only crewmates can request hints' });
+
+      const hints = getHints(room.prompt.id);
+      if (!room._hintsUnlocked) room._hintsUnlocked = 0;
+
+      if (room._hintsUnlocked >= hints.length) {
+        return callback?.({ success: false, error: 'No more hints available' });
+      }
+
+      const hint = hints[room._hintsUnlocked];
+      room._hintsUnlocked++;
+
+      // Send hint to ALL players in the room
+      io.to(currentRoom).emit('game:hintReceived', {
+        hint,
+        hintNumber: room._hintsUnlocked,
+        totalHints: hints.length,
+      });
+
+      callback?.({ success: true });
+    });
+
     socket.on('game:reportBug', (_, callback) => {
       const room = gameManager.getRoom(currentRoom);
       if (!room) return callback?.({ success: false, error: 'Not in a room' });
@@ -99,7 +146,25 @@ export function registerSocketHandlers(io, gameManager) {
       // Count alive crewmates (excluding the proposer)
       const crewmates = [...room.players.entries()]
         .filter(([uid, p]) => p.status === 'alive' && p.role === 'crewmate' && uid !== user.uid);
-      const needed = Math.ceil(crewmates.length / 2); // majority of OTHER crewmates
+
+      // If sole crewmate, auto-approve immediately
+      if (crewmates.length === 0) {
+        room.submitCode(code);
+        io.to(currentRoom).emit('commit:proposed', {
+          proposerUid: user.uid,
+          proposerName: player.username,
+          total: 0,
+          needed: 0,
+          approvals: 0,
+          rejections: 0,
+        });
+        setTimeout(() => {
+          io.to(currentRoom).emit('commit:result', { approved: true, message: 'Auto-approved (sole crewmate)' });
+        }, 500);
+        return;
+      }
+
+      const needed = Math.ceil(crewmates.length / 2);
 
       // Store proposal on the room
       room._commitProposal = {
@@ -108,7 +173,7 @@ export function registerSocketHandlers(io, gameManager) {
         code,
         votes: {},
         total: crewmates.length,
-        needed: Math.max(needed, 1),
+        needed,
         approvals: 0,
         rejections: 0,
       };
@@ -118,7 +183,7 @@ export function registerSocketHandlers(io, gameManager) {
         proposerUid: user.uid,
         proposerName: player.username,
         total: crewmates.length,
-        needed: Math.max(needed, 1),
+        needed,
         approvals: 0,
         rejections: 0,
       });
@@ -216,11 +281,9 @@ export function registerSocketHandlers(io, gameManager) {
       if (currentRoom) {
         const room = gameManager.getRoom(currentRoom);
         if (room) {
-          // If game is active, mark as disconnected but keep in game
           if (room.phase !== 'lobby' && room.phase !== 'gameEnd') {
-            room.io.to(currentRoom).emit('player:disconnected', {
-              uid: user.uid, username: user.name,
-            });
+            // Mid-game disconnect — treat as leaving
+            room.leaveGameMidMatch(user.uid);
           } else {
             gameManager.leaveRoom(currentRoom, user.uid);
           }

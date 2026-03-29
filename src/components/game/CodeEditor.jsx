@@ -180,7 +180,7 @@ export default function CodeEditor() {
       if (!u.cursor) return;
 
       const { lineNumber, column } = u.cursor;
-      const safeId = u.clientId?.replace(/[^a-zA-Z0-9]/g, '') || 'x';
+      const safeId = 'u' + (u.clientId?.replace(/[^a-zA-Z0-9]/g, '') || 'x');
 
       // Cursor line decoration
       newDecorations.push({
@@ -219,7 +219,7 @@ export default function CodeEditor() {
 
     let css = '';
     remoteUsers.forEach((u) => {
-      const safeId = u.clientId?.replace(/[^a-zA-Z0-9]/g, '') || 'x';
+      const safeId = 'u' + (u.clientId?.replace(/[^a-zA-Z0-9]/g, '') || 'x');
       const color = u.color || '#ff6b6b';
       const colorLight = u.colorLight || 'rgba(255,107,107,0.15)';
 
@@ -237,6 +237,7 @@ export default function CodeEditor() {
   }, [remoteUsers]);
 
   // Bind Monaco to Yjs using our custom binding
+  const starterInjectedRef = useRef(false);
   useEffect(() => {
     if (!editorRef.current || !yText || !yDoc || !editorReady) return;
 
@@ -246,7 +247,7 @@ export default function CodeEditor() {
       bindingRef.current = null;
     }
 
-    // Small delay to let Monaco fully re-mount after language change
+    // Wait for Yjs to sync from server before deciding to inject starter code
     const timer = setTimeout(() => {
       try {
         const editor = editorRef.current;
@@ -254,8 +255,12 @@ export default function CodeEditor() {
         const model = editor.getModel();
         if (!model) return;
 
-        // If the Y.Text is empty and we have starter code, insert it
-        if (yText.length === 0 && prompt?.starterCode) {
+        // Only inject starter code if:
+        // 1. Y.Text is still empty (no peers have written yet)
+        // 2. We have starter code to inject
+        // 3. We haven't already injected it in this session
+        if (yText.length === 0 && prompt?.starterCode && !starterInjectedRef.current) {
+          starterInjectedRef.current = true;
           yDoc.transact(() => {
             yText.insert(0, prompt.starterCode);
           });
@@ -266,7 +271,7 @@ export default function CodeEditor() {
       } catch (err) {
         console.warn('Yjs binding error (will retry on next render):', err);
       }
-    }, 100);
+    }, 500); // 500ms gives Yjs time to sync existing content from server
 
     return () => {
       clearTimeout(timer);
