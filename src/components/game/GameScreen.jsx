@@ -7,6 +7,7 @@ import ActionButtons from './ActionButtons';
 import ChatBox from '../lobby/ChatBox';
 import VotingModal from '../voting/VotingModal';
 import ImpostorDashboard from '../impostor/ImpostorDashboard';
+import CommitVotingModal from './CommitVotingModal';
 import useGameStore from '../../store/gameStore';
 
 export default function GameScreen() {
@@ -137,7 +138,10 @@ export default function GameScreen() {
       {/* Voting Modal Overlay */}
       <VotingModal isOpen={showVoting} onClose={() => setShowVoting(false)} />
 
-      {/* Impostor Dashboard (toggled by Ctrl+I) */}
+      {/* Commit Voting Modal */}
+      <CommitVotingModal />
+
+      {/* Impostor Dashboard (toggled by Sabotage button) */}
       {showImpostorPanel && <ImpostorDashboard />}
 
       {/* Flashbang Overlay */}

@@ -65,6 +65,8 @@ export default class YjsServer {
             // Broadcast to all other clients in same room
             this.broadcastToRoom(roomCode, ws, data);
           } else if (msgType === MSG_AWARENESS) {
+            // Cache awareness on this socket for new joiners
+            ws._yjsLastAwareness = data;
             // Relay awareness update to all other clients in same room
             this.broadcastToRoom(roomCode, ws, data);
           }

@@ -100,7 +100,7 @@ function bindYTextToMonaco(yText, yDoc, editor) {
 }
 
 export default function CodeEditor() {
-  const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings } = useGameStore();
+  const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings, setEditorCode } = useGameStore();
   const displayName = profile?.displayName || user?.name || 'Player';
   const { yDoc, yText, isConnected, awareness, broadcastAwareness } = useYjs(roomCode, displayName);
   // Language is locked to host's selection from game settings
@@ -276,6 +276,18 @@ export default function CodeEditor() {
       }
     };
   }, [editorReady, yText, yDoc, prompt, lang]);
+
+  // Sync editor content to store whenever yText changes (for commit button)
+  useEffect(() => {
+    if (!yText) return;
+    const syncToStore = () => {
+      setEditorCode(yText.toString());
+    };
+    yText.observe(syncToStore);
+    // Initial sync
+    syncToStore();
+    return () => yText.unobserve(syncToStore);
+  }, [yText, setEditorCode]);
 
   // Handle editor mount
   const handleEditorMount = useCallback((editor, monaco) => {

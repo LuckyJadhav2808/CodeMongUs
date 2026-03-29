@@ -55,6 +55,18 @@ export function registerSocketHandlers(io, gameManager) {
       callback?.(result);
     });
 
+    // ──────── SETTINGS SYNC ────────
+
+    socket.on('room:updateSettings', (settings) => {
+      if (!currentRoom) return;
+      const room = gameManager.getRoom(currentRoom);
+      if (!room) return;
+      // Only the host can update settings
+      if (room.hostUid !== user.uid) return;
+      // Broadcast to all players in the room
+      io.to(currentRoom).emit('room:settingsUpdated', settings);
+    });
+
     // ──────── PROMPT CATALOG ────────
 
     socket.on('prompts:list', (_, callback) => {
@@ -71,6 +83,93 @@ export function registerSocketHandlers(io, gameManager) {
     socket.on('game:submitCode', ({ code }) => {
       const room = gameManager.getRoom(currentRoom);
       if (room) room.submitCode(code);
+    });
+
+    // ──────── COMMIT PROPOSAL (consensus) ────────
+
+    socket.on('commit:propose', ({ code }) => {
+      if (!currentRoom) return;
+      const room = gameManager.getRoom(currentRoom);
+      if (!room || room.phase !== 'coding') return;
+
+      // Only crewmates can propose commits
+      const player = room.players.get(user.uid);
+      if (!player || player.role === 'impostor') return;
+
+      // Count alive crewmates (excluding the proposer)
+      const crewmates = [...room.players.entries()]
+        .filter(([uid, p]) => p.status === 'alive' && p.role === 'crewmate' && uid !== user.uid);
+      const needed = Math.ceil(crewmates.length / 2); // majority of OTHER crewmates
+
+      // Store proposal on the room
+      room._commitProposal = {
+        proposerUid: user.uid,
+        proposerName: player.username,
+        code,
+        votes: {},
+        total: crewmates.length,
+        needed: Math.max(needed, 1),
+        approvals: 0,
+        rejections: 0,
+      };
+
+      // Broadcast to all players in the room
+      io.to(currentRoom).emit('commit:proposed', {
+        proposerUid: user.uid,
+        proposerName: player.username,
+        total: crewmates.length,
+        needed: Math.max(needed, 1),
+        approvals: 0,
+        rejections: 0,
+      });
+
+      // Auto-expire after 15 seconds
+      room._commitTimer = setTimeout(() => {
+        if (room._commitProposal) {
+          io.to(currentRoom).emit('commit:result', { approved: false, message: 'Commit proposal expired' });
+          room._commitProposal = null;
+        }
+      }, 15000);
+    });
+
+    socket.on('commit:respond', ({ approve }) => {
+      if (!currentRoom) return;
+      const room = gameManager.getRoom(currentRoom);
+      if (!room || !room._commitProposal) return;
+
+      const proposal = room._commitProposal;
+      // Can't vote on your own proposal, and can't vote twice
+      if (user.uid === proposal.proposerUid) return;
+      if (proposal.votes[user.uid] !== undefined) return;
+
+      // Only crewmates can vote
+      const player = room.players.get(user.uid);
+      if (!player || player.role !== 'crewmate') return;
+
+      proposal.votes[user.uid] = approve;
+      if (approve) proposal.approvals++;
+      else proposal.rejections++;
+
+      // Broadcast updated counts
+      io.to(currentRoom).emit('commit:update', {
+        approvals: proposal.approvals,
+        rejections: proposal.rejections,
+      });
+
+      // Check if we have enough votes
+      const rejected = proposal.rejections > proposal.total - proposal.needed;
+      if (proposal.approvals >= proposal.needed) {
+        // Approved! Submit the code
+        clearTimeout(room._commitTimer);
+        room.submitCode(proposal.code);
+        io.to(currentRoom).emit('commit:result', { approved: true, message: 'Commit approved!' });
+        room._commitProposal = null;
+      } else if (rejected) {
+        // Rejected
+        clearTimeout(room._commitTimer);
+        io.to(currentRoom).emit('commit:result', { approved: false, message: 'Commit rejected by crew' });
+        room._commitProposal = null;
+      }
     });
 
     // ──────── VOTING ────────

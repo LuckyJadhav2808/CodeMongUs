@@ -160,6 +160,14 @@ const useGameStore = create((set, get) => ({
   showRoleReveal: false,
   setShowRoleReveal: (show) => set({ showRoleReveal: show }),
 
+  // ──────── EDITOR CODE (for commit) ────────
+  editorCode: '',
+  setEditorCode: (code) => set({ editorCode: code }),
+
+  // ──────── COMMIT PROPOSAL ────────
+  commitProposal: null, // { proposerUid, proposerName, code, votes: {uid: bool}, total, needed }
+  setCommitProposal: (proposal) => set({ commitProposal: proposal }),
+
   // ──────── SABOTAGE ────────
   activeSabotage: null,
 
@@ -277,6 +285,19 @@ const useGameStore = create((set, get) => ({
     socket.emit('game:submitCode', { code });
   },
 
+  proposeCommit: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    const { editorCode } = get();
+    socket.emit('commit:propose', { code: editorCode });
+  },
+
+  respondToCommitProposal: (approve) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('commit:respond', { approve });
+  },
+
   fetchPrompts: () => {
     const socket = getSocket();
     if (!socket) return;
@@ -317,6 +338,11 @@ const useGameStore = create((set, get) => ({
       setTimeout(() => {
         set({ screen: 'game', showRoleReveal: false });
       }, 4500);
+    });
+
+    // Settings sync (lobby)
+    socket.on('room:settingsUpdated', (settings) => {
+      set((s) => ({ gameSettings: { ...s.gameSettings, ...settings } }));
     });
 
     // Coding phase start
@@ -428,6 +454,27 @@ const useGameStore = create((set, get) => ({
     // Player disconnected
     socket.on('player:disconnected', ({ uid, username }) => {
       console.log(`⚠️ ${username} disconnected`);
+    });
+
+    // ──── COMMIT PROPOSAL (consensus) ────
+    socket.on('commit:proposed', (proposal) => {
+      set({ commitProposal: proposal });
+    });
+
+    socket.on('commit:update', (update) => {
+      set((s) => {
+        if (!s.commitProposal) return {};
+        return { commitProposal: { ...s.commitProposal, ...update } };
+      });
+    });
+
+    socket.on('commit:result', ({ approved, message }) => {
+      if (approved) {
+        // Code was actually submitted by the server
+        console.log('✅ Commit approved and submitted!');
+      }
+      // Clear the proposal after a brief delay so users see the result
+      setTimeout(() => set({ commitProposal: null }), 3000);
     });
   },
 }));

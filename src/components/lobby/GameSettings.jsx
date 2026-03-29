@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useGameStore from '../../store/gameStore';
+import { getSocket } from '../../services/socket';
 
 const DIFFICULTY_BADGES = {
   easy: { label: '🟢 Easy', color: 'bg-green-100 text-green-800 border-green-300' },
@@ -20,6 +21,15 @@ const LANGUAGE_OPTIONS = [
   { value: 'python', label: 'Python', icon: '🐍' },
   { value: 'cpp', label: 'C++', icon: '⚙️' },
 ];
+
+// Broadcast settings change to all players in the lobby
+function broadcastSettings(updates) {
+  const socket = getSocket();
+  if (socket) {
+    const store = useGameStore.getState();
+    socket.emit('room:updateSettings', { ...store.gameSettings, ...updates });
+  }
+}
 
 export default function GameSettings({ isHost }) {
   const { gameSettings, setGameSettings, promptCatalog, fetchPrompts } = useGameStore();
@@ -47,16 +57,19 @@ export default function GameSettings({ isHost }) {
   const handleSelectPrompt = (promptId) => {
     if (!isHost) return;
     setGameSettings({ promptId });
+    broadcastSettings({ promptId });
   };
 
   const handleTimerChange = (duration) => {
     if (!isHost) return;
     setGameSettings({ timerDuration: duration });
+    broadcastSettings({ timerDuration: duration });
   };
 
   const handleLanguageChange = (language) => {
     if (!isHost) return;
     setGameSettings({ language });
+    broadcastSettings({ language });
   };
 
   return (
