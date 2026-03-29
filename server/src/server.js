@@ -33,13 +33,28 @@ import { checkPistonHealth } from './services/piston.js';
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+// Build allowed origins list
+const allowedOrigins = [
+  FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://codemongus.netlify.app',
+].filter(Boolean);
+
+console.log('🌐 Allowed CORS origins:', allowedOrigins);
+
 // ─── EXPRESS ───
 const app = express();
 const server = createServer(app);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors({
-  origin: [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json({ limit: '1mb' }));
@@ -83,7 +98,7 @@ app.use((err, req, res, next) => {
 // ─── SOCKET.IO ───
 const io = new SocketIO(server, {
   cors: {
-    origin: [FRONTEND_URL, 'http://localhost:5173'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
