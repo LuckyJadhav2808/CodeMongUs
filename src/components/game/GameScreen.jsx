@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import Timer from './Timer';
 import CodeEditor from './CodeEditor';
 import PlayerSidebar from './PlayerSidebar';
@@ -10,6 +11,12 @@ import useGameStore from '../../store/gameStore';
 
 export default function GameScreen() {
   const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds } = useGameStore();
+  const [timerExpired, setTimerExpired] = useState(false);
+
+  const handleTimerExpire = () => {
+    setTimerExpired(true);
+    // Server will handle the phase transition — show a waiting state
+  };
 
   return (
     <div className={`min-h-screen bg-surface flex flex-col ${activeSabotage === 'lag' ? 'screen-shake' : ''}`}>
@@ -30,7 +37,7 @@ export default function GameScreen() {
           </div>
         </div>
         <div className="flex items-center gap-6">
-          <Timer initialSeconds={timerSeconds || 240} autoStart={true} label="MISSION TIME" />
+          <Timer initialSeconds={timerSeconds || 240} autoStart={true} label="MISSION TIME" onExpire={handleTimerExpire} />
           <ActionButtons />
         </div>
       </motion.header>
@@ -131,6 +138,35 @@ export default function GameScreen() {
           transition={{ duration: 5 }}
           className="fixed inset-0 bg-white z-[200] pointer-events-none"
         />
+      )}
+      {/* Timer Expired Overlay — prevents white screen while server transitions */}
+      {timerExpired && !showVoting && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-surface/90 backdrop-blur-md z-[150] flex items-center justify-center"
+        >
+          <div className="text-center">
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="text-7xl mb-6"
+            >
+              ⏱️
+            </motion.div>
+            <h2 className="font-display font-extrabold text-3xl text-on-surface mb-2">TIME'S UP!</h2>
+            <p className="font-body text-on-surface-variant">Running tests & evaluating code...</p>
+            <motion.div
+              className="mt-4 w-48 h-1 bg-outline-variant rounded-full mx-auto overflow-hidden"
+            >
+              <motion.div
+                className="h-full bg-primary rounded-full"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+              />
+            </motion.div>
+          </div>
+        </motion.div>
       )}
     </div>
   );

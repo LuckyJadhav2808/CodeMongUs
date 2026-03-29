@@ -236,30 +236,44 @@ export default function CodeEditor() {
 
   // Bind Monaco to Yjs using our custom binding
   useEffect(() => {
-    if (!editorRef.current || !yText || !yDoc) return;
+    if (!editorRef.current || !yText || !yDoc || !editorReady) return;
 
+    // Destroy previous binding (e.g. when language changes)
     if (bindingRef.current) {
       bindingRef.current.destroy();
       bindingRef.current = null;
     }
 
-    // If the Y.Text is empty and we have starter code, insert it
-    if (yText.length === 0 && prompt?.starterCode) {
-      yDoc.transact(() => {
-        yText.insert(0, prompt.starterCode);
-      });
-    }
+    // Small delay to let Monaco fully re-mount after language change
+    const timer = setTimeout(() => {
+      try {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const model = editor.getModel();
+        if (!model) return;
 
-    const binding = bindYTextToMonaco(yText, yDoc, editorRef.current);
-    bindingRef.current = binding;
+        // If the Y.Text is empty and we have starter code, insert it
+        if (yText.length === 0 && prompt?.starterCode) {
+          yDoc.transact(() => {
+            yText.insert(0, prompt.starterCode);
+          });
+        }
+
+        const binding = bindYTextToMonaco(yText, yDoc, editor);
+        bindingRef.current = binding;
+      } catch (err) {
+        console.warn('Yjs binding error (will retry on next render):', err);
+      }
+    }, 100);
 
     return () => {
+      clearTimeout(timer);
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
       }
     };
-  }, [editorReady, yText, yDoc, prompt]);
+  }, [editorReady, yText, yDoc, prompt, lang]);
 
   // Handle editor mount
   const handleEditorMount = useCallback((editor, monaco) => {

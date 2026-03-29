@@ -3,6 +3,7 @@ import SabotageManager from './SabotageManager.js';
 import * as GameSessionModel from '../models/GameSession.js';
 import * as UserModel from '../models/User.js';
 import { getRandomPrompt, trackUsage } from '../models/Prompt.js';
+import { resolvePromptForGame, getRandomCatalogPrompt } from '../data/promptCatalog.js';
 import { processPostGame } from '../services/statsService.js';
 import { executeCode } from '../services/piston.js';
 
@@ -90,14 +91,32 @@ export default class GameRoom {
 
   // ──────────────── GAME START ────────────────
 
-  async startGame(requestingUid) {
+  async startGame(requestingUid, settings = {}) {
     if (requestingUid !== this.hostUid) return { success: false, error: 'Only host can start' };
-    if (this.players.size < 4) return { success: false, error: 'Need at least 4 players' };
+    if (this.players.size < 2) return { success: false, error: 'Need at least 2 players' };
     if (this.phase !== 'lobby') return { success: false, error: 'Game already started' };
 
-    // Fetch prompt
-    this.prompt = await getRandomPrompt();
-    if (this.prompt?.id !== 'fallback') trackUsage(this.prompt.id).catch(() => {});
+    // Store settings
+    this.settings = settings;
+    const { promptId, timerDuration, language } = settings;
+
+    // Override coding phase duration if host set a custom timer
+    if (timerDuration && [120, 240, 360, 480].includes(timerDuration)) {
+      PHASE_DURATIONS.coding = timerDuration;
+    }
+
+    // Resolve prompt: use catalog first, fall back to Firestore
+    if (promptId && promptId !== 'random') {
+      this.prompt = resolvePromptForGame(promptId, language || 'javascript');
+    }
+    if (!this.prompt && promptId === 'random') {
+      this.prompt = resolvePromptForGame('random', language || 'javascript');
+    }
+    if (!this.prompt) {
+      // Fallback to Firestore prompts
+      this.prompt = await getRandomPrompt();
+      if (this.prompt?.id !== 'fallback') trackUsage(this.prompt.id).catch(() => {});
+    }
 
     // Assign roles: 1 impostor, rest crewmates
     const uids = [...this.players.keys()];

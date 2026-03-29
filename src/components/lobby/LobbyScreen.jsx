@@ -5,6 +5,7 @@ import ChatBox from './ChatBox';
 import NavBar from './NavBar';
 import ProfilePanel from './ProfilePanel';
 import StatsPanel from './StatsPanel';
+import GameSettings from './GameSettings';
 import Button from '../common/Button';
 import useGameStore from '../../store/gameStore';
 
@@ -181,12 +182,17 @@ export default function LobbyScreen() {
                     ))}
                   </div>
 
+                  {/* Game Settings Panel */}
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-6">
+                    <GameSettings isHost={isHost} />
+                  </motion.div>
+
                   {/* Buttons */}
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mt-8 flex justify-center gap-4">
                     {isHost && (
                       <Button variant="primary" size="lg" icon="🚀" onClick={handleStartGame}
-                        disabled={players.length < 4}>
-                        {players.length < 4 ? `NEED ${4 - players.length} MORE` : 'START MISSION'}
+                        disabled={players.length < 2}>
+                        {players.length < 2 ? `NEED ${2 - players.length} MORE` : 'START MISSION'}
                       </Button>
                     )}
                     <Button variant="ghost" size="lg" icon="🚪" onClick={leaveRoom}>

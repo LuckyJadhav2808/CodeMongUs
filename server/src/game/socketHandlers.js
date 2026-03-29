@@ -2,6 +2,7 @@
  * Socket.io event handler registration.
  * Maps incoming events to GameManager/GameRoom methods.
  */
+import { getCatalogList } from '../data/promptCatalog.js';
 export function registerSocketHandlers(io, gameManager) {
   io.on('connection', (socket) => {
     const user = socket.user;
@@ -46,11 +47,18 @@ export function registerSocketHandlers(io, gameManager) {
 
     // ──────── GAME FLOW ────────
 
-    socket.on('game:start', async (_, callback) => {
+    socket.on('game:start', async (data, callback) => {
       const room = gameManager.getRoom(currentRoom);
       if (!room) return callback?.({ success: false, error: 'Not in a room' });
-      const result = await room.startGame(user.uid);
+      const settings = data || {};
+      const result = await room.startGame(user.uid, settings);
       callback?.(result);
+    });
+
+    // ──────── PROMPT CATALOG ────────
+
+    socket.on('prompts:list', (_, callback) => {
+      callback?.({ prompts: getCatalogList() });
     });
 
     socket.on('game:reportBug', (_, callback) => {

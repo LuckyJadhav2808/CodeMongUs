@@ -139,6 +139,19 @@ const useGameStore = create((set, get) => ({
   testResults: null,
   gameStartTime: null,
 
+  // ──────── GAME SETTINGS (host-configured) ────────
+  gameSettings: {
+    promptId: 'random',
+    timerDuration: 240,
+    language: 'javascript',
+  },
+  setGameSettings: (updates) => set((s) => ({
+    gameSettings: { ...s.gameSettings, ...updates },
+  })),
+
+  // ──────── PROMPT CATALOG ────────
+  promptCatalog: [],
+
   // ──────── UI TOGGLES ────────
   showVoting: false,
   setShowVoting: (show) => set({ showVoting: show }),
@@ -210,7 +223,8 @@ const useGameStore = create((set, get) => ({
   startGame: () => {
     const socket = getSocket();
     if (!socket) return;
-    socket.emit('game:start', null, (res) => {
+    const { gameSettings } = get();
+    socket.emit('game:start', gameSettings, (res) => {
       if (!res.success) {
         alert(res.error || 'Failed to start game');
       }
@@ -261,6 +275,16 @@ const useGameStore = create((set, get) => ({
     const socket = getSocket();
     if (!socket) return;
     socket.emit('game:submitCode', { code });
+  },
+
+  fetchPrompts: () => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('prompts:list', null, (res) => {
+      if (res?.prompts) {
+        set({ promptCatalog: res.prompts });
+      }
+    });
   },
 
   // ═══════════════════════════════════════════════
