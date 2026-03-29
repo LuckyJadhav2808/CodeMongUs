@@ -6,6 +6,7 @@ const LANGUAGE_MAP = {
   javascript: { language: 'javascript', version: '18.15.0' },
   python: { language: 'python', version: '3.10.0' },
   typescript: { language: 'typescript', version: '5.0.3' },
+  cpp: { language: 'c++', version: '10.2.0' },
 };
 
 /**
@@ -67,6 +68,9 @@ export async function executeCode(code, testCases, language = 'javascript') {
 function buildTestRunner(code, testInput, language) {
   if (language === 'python') {
     return `${code}\nprint(${testInput})`;
+  }
+  if (language === 'cpp') {
+    return `${code}\nint main() { ${testInput} return 0; }`;
   }
   // JavaScript / TypeScript
   return `${code}\nconsole.log(${testInput});`;

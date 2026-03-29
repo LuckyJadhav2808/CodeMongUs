@@ -100,10 +100,12 @@ function bindYTextToMonaco(yText, yDoc, editor) {
 }
 
 export default function CodeEditor() {
-  const { activeSabotage, prompt, players, roomCode, profile, user } = useGameStore();
+  const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings } = useGameStore();
   const displayName = profile?.displayName || user?.name || 'Player';
   const { yDoc, yText, isConnected, awareness, broadcastAwareness } = useYjs(roomCode, displayName);
-  const [lang, setLang] = useState('javascript');
+  // Language is locked to host's selection from game settings
+  const lang = gameSettings?.language || 'javascript';
+  const monacoLang = lang === 'cpp' ? 'cpp' : lang;
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const bindingRef = useRef(null);
@@ -327,18 +329,12 @@ export default function CodeEditor() {
             <div className="editor-dot bg-green-400" />
           </div>
           <span className="font-mono text-xs text-on-surface-variant ml-2">
-            {prompt?.title || 'mission'}.{lang === 'python' ? 'py' : 'js'}
+            {prompt?.title || 'mission'}.{lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              className="text-[10px] bg-surface-highest border-2 border-outline-variant rounded-lg px-2 py-1 
-                font-mono text-on-surface cursor-pointer"
-            >
-              <option value="javascript">JavaScript</option>
-              <option value="python">Python</option>
-            </select>
+            <span className="text-[10px] bg-surface-highest border-2 border-outline-variant rounded-lg px-2 py-1 font-mono text-on-surface">
+              {lang === 'cpp' ? 'C++' : lang === 'python' ? 'Python' : 'JavaScript'}
+            </span>
             <div className="flex items-center gap-1">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
               <span className="text-[10px] font-body text-on-surface-variant">
@@ -372,7 +368,7 @@ export default function CodeEditor() {
 
           <Editor
             height="100%"
-            language={lang}
+            language={monacoLang}
             theme="vs-dark"
             onMount={handleEditorMount}
             options={{
@@ -422,7 +418,7 @@ export default function CodeEditor() {
         {/* Status Bar */}
         <div className="flex items-center justify-between px-4 py-1.5 border-t border-gray-700" style={{ backgroundColor: '#181825' }}>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono text-blue-300">{lang}</span>
+            <span className="text-[10px] font-mono text-blue-300">{lang === 'cpp' ? 'C++' : lang}</span>
             <span className="text-[10px] font-mono text-gray-500">UTF-8</span>
             <span className={`text-[10px] font-mono ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
               {isConnected ? '● Yjs synced' : '○ Disconnected'}

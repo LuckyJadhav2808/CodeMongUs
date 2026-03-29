@@ -18,6 +18,7 @@ const TIMER_OPTIONS = [
 const LANGUAGE_OPTIONS = [
   { value: 'javascript', label: 'JavaScript', icon: '🟨' },
   { value: 'python', label: 'Python', icon: '🐍' },
+  { value: 'cpp', label: 'C++', icon: '⚙️' },
 ];
 
 export default function GameSettings({ isHost }) {

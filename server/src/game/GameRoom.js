@@ -164,6 +164,7 @@ export default class GameRoom {
         this.io.to(this.roomCode).emit('game:codingStart', {
           prompt: this.prompt,
           duration: PHASE_DURATIONS.coding,
+          language: this.settings?.language || 'javascript',
         });
         this.timer.start(PHASE_DURATIONS.coding, () => this.transitionTo('build'));
         break;

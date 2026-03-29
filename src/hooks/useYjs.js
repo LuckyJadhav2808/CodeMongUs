@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Y from 'yjs';
 
-const YJS_WS_URL = import.meta.env.VITE_YJS_URL || 'ws://localhost:3000/yjs';
+// Derive Yjs WebSocket URL from the server URL (http→ws, append /yjs)
+function getYjsWsUrl() {
+  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+  return serverUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/yjs';
+}
+const YJS_WS_URL = getYjsWsUrl();
 
 /**
  * Message type tags — must match yjsServer.js

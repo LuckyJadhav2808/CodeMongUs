@@ -320,8 +320,12 @@ const useGameStore = create((set, get) => ({
     });
 
     // Coding phase start
-    socket.on('game:codingStart', ({ prompt, duration }) => {
-      set({ prompt, screen: 'game', timerSeconds: duration, gameStartTime: Date.now() });
+    socket.on('game:codingStart', ({ prompt, duration, language }) => {
+      const updates = { prompt, screen: 'game', timerSeconds: duration, gameStartTime: Date.now() };
+      if (language) {
+        updates.gameSettings = { ...get().gameSettings, language };
+      }
+      set(updates);
     });
 
     // Timer tick
