@@ -139,6 +139,9 @@ export function registerSocketHandlers(io, gameManager) {
       const room = gameManager.getRoom(currentRoom);
       if (!room || room.phase !== 'coding') return;
 
+      // Block proposals if a meeting is being called
+      if (room._meetingPending) return;
+
       // Only crewmates can propose commits
       const player = room.players.get(user.uid);
       if (!player || player.role === 'impostor') return;

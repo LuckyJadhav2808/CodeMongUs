@@ -118,6 +118,8 @@ export default class GameRoom {
 
     if (impostorsAlive === 0) {
       this.winner = 'crewmates';
+      // Stop the active timer immediately to prevent double transitions
+      this.timer.stop();
       this.io.to(this.roomCode).emit('game:forceEnd', {
         reason: 'Impostor left the game',
         winner: 'crewmates',
@@ -125,6 +127,8 @@ export default class GameRoom {
       setTimeout(() => this.transitionTo('gameEnd'), 1500);
     } else if (crewmatesAlive === 0 || impostorsAlive >= crewmatesAlive) {
       this.winner = 'impostor';
+      // Stop the active timer immediately to prevent double transitions
+      this.timer.stop();
       this.io.to(this.roomCode).emit('game:forceEnd', {
         reason: 'Not enough crewmates to continue',
         winner: 'impostor',
@@ -139,6 +143,23 @@ export default class GameRoom {
     const player = this.players.get(uid);
     if (!player) return false;
     player.socketId = socketId;
+
+    // Send the reconnected player the full current game state
+    this.io.to(socketId).emit('game:state', this.getState());
+
+    // If coding or voting, resend timer so they're in sync
+    if (this.timer.getRemaining() > 0) {
+      this.io.to(socketId).emit('timer:start', { seconds: this.timer.getRemaining() });
+    }
+
+    // Resend their role privately
+    if (player.role) {
+      this.io.to(socketId).emit('game:roleReveal', {
+        role: player.role,
+        prompt: this.prompt,
+      });
+    }
+
     return true;
   }
 
@@ -270,6 +291,15 @@ export default class GameRoom {
     if (this.phase !== 'voting') return { success: false, error: 'Not in voting phase' };
     const voter = this.players.get(voterUid);
     if (!voter || voter.status !== 'alive') return { success: false, error: 'Not eligible to vote' };
+    if (this.votes[voterUid] !== undefined) return { success: false, error: 'Already voted' };
+
+    // Validate target: must be 'skip' or a living player's UID
+    if (targetUid !== 'skip') {
+      const target = this.players.get(targetUid);
+      if (!target || target.status !== 'alive') {
+        return { success: false, error: 'Invalid vote target' };
+      }
+    }
 
     this.votes[voterUid] = targetUid; // 'skip' or a player UID
     GameSessionModel.recordVote(this.roomCode, this.meetingNumber, voterUid, targetUid).catch(() => {});
@@ -339,6 +369,7 @@ export default class GameRoom {
     if (this.phase !== 'coding') return { success: false, error: 'Can only sabotage during coding' };
     const player = this.players.get(uid);
     if (!player || player.role !== 'impostor') return { success: false, error: 'Not the impostor' };
+    if (player.status !== 'alive') return { success: false, error: 'Cannot sabotage while eliminated' };
 
     const crewmateSockets = [];
     for (const [, p] of this.players) {
@@ -362,10 +393,20 @@ export default class GameRoom {
     if (this.phase !== 'coding') return { success: false, error: 'Can only report during coding' };
     // Guard against multiple meetings being queued during the 2s delay
     if (this._meetingPending) return { success: false, error: 'A meeting is already being called' };
+    // Block meetings while a commit proposal vote is in progress
+    if (this._commitProposal) return { success: false, error: 'A commit vote is in progress' };
     const player = this.players.get(uid);
     if (!player || player.status !== 'alive') return { success: false, error: 'Not eligible' };
 
     this._meetingPending = true;
+
+    // Cancel any lingering commit timer (safety net)
+    if (this._commitTimer) {
+      clearTimeout(this._commitTimer);
+      this._commitTimer = null;
+      this._commitProposal = null;
+      this.io.to(this.roomCode).emit('commit:result', { approved: false, message: 'Cancelled — meeting called' });
+    }
 
     GameSessionModel.updatePlayer(this.roomCode, uid, {
       bugsReported: (player.bugsReported || 0) + 1,
