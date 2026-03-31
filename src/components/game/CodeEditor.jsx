@@ -343,6 +343,17 @@ export default function CodeEditor() {
     }
   }, [activeSabotage, yText, yDoc]);
 
+  // Scroll editor to a remote user's cursor line
+  const scrollToUser = useCallback((ru) => {
+    if (!editorRef.current || !ru.cursor) return;
+    editorRef.current.revealLineInCenter(ru.cursor.lineNumber);
+    editorRef.current.setPosition({
+      lineNumber: ru.cursor.lineNumber,
+      column: ru.cursor.column,
+    });
+    editorRef.current.focus();
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       <div className="editor-container flex flex-col h-full">
@@ -416,31 +427,49 @@ export default function CodeEditor() {
             }}
           />
 
-          {/* Remote Cursor Name Tags */}
+          {/* Remote Cursor Name Tags — rendered as overlay with proper positioning */}
           {remoteUsers.map((ru) => ru.cursor && (
             <div
               key={ru.clientId}
-              className="absolute pointer-events-none z-50 transition-all duration-150"
+              className="absolute pointer-events-none transition-all duration-200 ease-out"
               style={{
-                top: `${(ru.cursor.lineNumber - 1) * 19 + 12 - 18}px`,
+                top: `${(ru.cursor.lineNumber - 1) * 19 + 12 - 20}px`,
                 left: `${60 + (ru.cursor.column - 1) * 7.8}px`,
+                zIndex: 100,
               }}
             >
+              {/* Name tag above cursor */}
               <div
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-t-sm rounded-br-sm whitespace-nowrap shadow-sm"
+                className="whitespace-nowrap shadow-lg"
                 style={{
                   backgroundColor: ru.color,
                   color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: 700,
                   fontFamily: "'Inter', sans-serif",
+                  padding: '2px 6px',
+                  borderRadius: '3px 3px 3px 0',
+                  lineHeight: '14px',
+                  letterSpacing: '0.02em',
+                  boxShadow: `0 2px 8px ${ru.colorLight || 'rgba(0,0,0,0.3)'}`,
                 }}
               >
                 {ru.name}
               </div>
+              {/* Cursor line indicator */}
+              <div
+                style={{
+                  width: '2px',
+                  height: '19px',
+                  backgroundColor: ru.color,
+                  boxShadow: `0 0 6px ${ru.color}`,
+                }}
+              />
             </div>
           ))}
         </div>
 
-        {/* Status Bar */}
+        {/* Status Bar with User Locator */}
         <div className="flex items-center justify-between px-4 py-1.5 border-t border-gray-700" style={{ backgroundColor: '#181825' }}>
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-mono text-blue-300">{lang === 'cpp' ? 'C++' : lang}</span>
@@ -449,20 +478,32 @@ export default function CodeEditor() {
               {isConnected ? '● Yjs synced' : '○ Disconnected'}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            {remoteUsers.length > 0 && (
-              <div className="flex items-center gap-1">
-                {remoteUsers.map((ru) => (
-                  <div
-                    key={ru.clientId}
-                    title={ru.name}
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: ru.color }}
-                  />
-                ))}
-              </div>
-            )}
-            <span className="text-[10px] font-mono text-green-400">
+
+          {/* User Locator — click any user to jump to their cursor */}
+          <div className="flex items-center gap-2">
+            {remoteUsers.map((ru) => (
+              <button
+                key={ru.clientId}
+                onClick={() => scrollToUser(ru)}
+                title={`Jump to ${ru.name} — Line ${ru.cursor?.lineNumber || '?'}`}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
+                style={{ border: 'none', background: 'transparent' }}
+              >
+                <div
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: ru.color }}
+                />
+                <span className="text-[10px] font-mono" style={{ color: ru.color }}>
+                  {ru.name}
+                </span>
+                {ru.cursor && (
+                  <span className="text-[9px] font-mono text-gray-500">
+                    L{ru.cursor.lineNumber}
+                  </span>
+                )}
+              </button>
+            ))}
+            <span className="text-[10px] font-mono text-green-400 ml-1">
               ● {1 + remoteUsers.length} editing
             </span>
           </div>

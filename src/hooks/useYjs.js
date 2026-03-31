@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 
 // Derive Yjs WebSocket URL from the server URL (http→ws, append /yjs)
 function getYjsWsUrl() {
-  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+  const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   return serverUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/yjs';
 }
 const YJS_WS_URL = getYjsWsUrl();
