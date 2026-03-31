@@ -163,6 +163,8 @@ export function registerSocketHandlers(io, gameManager) {
         });
         setTimeout(() => {
           io.to(currentRoom).emit('commit:result', { approved: true, message: 'Auto-approved (sole crewmate)' });
+          // Skip remaining coding time — run tests immediately
+          room.transitionTo('build');
         }, 500);
         return;
       }
@@ -234,11 +236,14 @@ export function registerSocketHandlers(io, gameManager) {
       // Check if we have enough votes
       const rejected = proposal.rejections > proposal.total - proposal.needed;
       if (proposal.approvals >= proposal.needed) {
-        // Approved! Submit the code
+        // Approved! Submit the code and run tests immediately
         clearTimeout(room._commitTimer);
+        room._commitTimer = null;
         room.submitCode(proposal.code);
-        io.to(currentRoom).emit('commit:result', { approved: true, message: 'Commit approved!' });
+        io.to(currentRoom).emit('commit:result', { approved: true, message: 'Commit approved! Running tests...' });
         room._commitProposal = null;
+        // Skip remaining coding time — transition straight to build/execution
+        room.transitionTo('build');
       } else if (rejected) {
         // Rejected
         clearTimeout(room._commitTimer);
