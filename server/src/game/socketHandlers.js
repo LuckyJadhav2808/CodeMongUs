@@ -143,6 +143,9 @@ export function registerSocketHandlers(io, gameManager) {
       const player = room.players.get(user.uid);
       if (!player || player.role === 'impostor') return;
 
+      // Reject if a proposal is already in progress
+      if (room._commitProposal) return;
+
       // Count alive crewmates (excluding the proposer)
       const crewmates = [...room.players.entries()]
         .filter(([uid, p]) => p.status === 'alive' && p.role === 'crewmate' && uid !== user.uid);
@@ -165,6 +168,12 @@ export function registerSocketHandlers(io, gameManager) {
       }
 
       const needed = Math.ceil(crewmates.length / 2);
+
+      // Clear any lingering timer from a previous proposal (safety net)
+      if (room._commitTimer) {
+        clearTimeout(room._commitTimer);
+        room._commitTimer = null;
+      }
 
       // Store proposal on the room
       room._commitProposal = {
@@ -194,6 +203,7 @@ export function registerSocketHandlers(io, gameManager) {
           io.to(currentRoom).emit('commit:result', { approved: false, message: 'Commit proposal expired' });
           room._commitProposal = null;
         }
+        room._commitTimer = null;
       }, 15000);
     });
 

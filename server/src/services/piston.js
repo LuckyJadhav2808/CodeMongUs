@@ -23,10 +23,17 @@ export async function executeCode(code, testCases, language = 'javascript') {
       // Wrap code + test call to capture output
       const fullCode = buildTestRunner(code, tc.input, language);
 
+      const fileNameMap = {
+        javascript: 'solution.js',
+        python: 'solution.py',
+        typescript: 'solution.ts',
+        cpp: 'solution.cpp',
+      };
+
       const response = await axios.post(`${PISTON_URL}/execute`, {
         language: lang.language,
         version: lang.version,
-        files: [{ content: fullCode }],
+        files: [{ name: fileNameMap[language] || 'solution.js', content: fullCode }],
         stdin: '',
         args: [],
         compile_timeout: 10000,

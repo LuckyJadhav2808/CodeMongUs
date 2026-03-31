@@ -4,8 +4,9 @@ import GameRoom from './GameRoom.js';
  * GameManager — Singleton managing all active game rooms.
  */
 export default class GameManager {
-  constructor(io) {
+  constructor(io, yjsServer = null) {
     this.io = io;
+    this.yjsServer = yjsServer; // Reference to YjsServer for cleanup & code retrieval
     this.rooms = new Map(); // roomCode → GameRoom
   }
 
@@ -22,6 +23,8 @@ export default class GameManager {
     while (this.rooms.has(code)) code = this.generateRoomCode();
 
     const room = new GameRoom(this.io, code, hostUid, hostName);
+    // Give the room a reference to the Yjs server so it can grab live code
+    room.yjsServer = this.yjsServer;
     this.rooms.set(code, room);
     return room;
   }
@@ -42,6 +45,10 @@ export default class GameManager {
     const result = room.removePlayer(uid);
     if (result === 'EMPTY') {
       room.destroy();
+      // Clean up the Yjs document for this room to prevent memory leaks
+      if (this.yjsServer) {
+        this.yjsServer.destroyDoc(roomCode);
+      }
       this.rooms.delete(roomCode);
       console.log(`🗑️ Room ${roomCode} auto-cleaned (empty)`);
     }

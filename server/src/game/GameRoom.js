@@ -8,7 +8,7 @@ import { processPostGame } from '../services/statsService.js';
 import { executeCode } from '../services/piston.js';
 
 const PHASES = ['lobby', 'roleReveal', 'coding', 'voting', 'build', 'gameEnd'];
-const PHASE_DURATIONS = {
+const DEFAULT_PHASE_DURATIONS = {
   roleReveal: 5,
   coding: 240,
   voting: 60,
@@ -29,6 +29,9 @@ export default class GameRoom {
     this.timer = new TimerManager(io, roomCode);
     this.sabotage = new SabotageManager(io, roomCode);
 
+    // Per-room phase durations (copy from defaults so mutations don't leak)
+    this.phaseDurations = { ...DEFAULT_PHASE_DURATIONS };
+
     // Players: Map<uid, { uid, username, socketId, role, status, votes }>
     this.players = new Map();
     this.prompt = null;
@@ -37,6 +40,15 @@ export default class GameRoom {
     this.winner = null;
     this.finalCode = null;
     this.testResults = null;
+
+    // Meeting guard — prevents multiple meetings from being queued
+    this._meetingPending = false;
+
+    // Track remaining coding seconds so we can resume after a meeting
+    this._codingTimeRemaining = null;
+
+    // Reference to YjsServer (set externally after construction)
+    this.yjsServer = null;
 
     // Create Firestore session
     GameSessionModel.createSession(roomCode, hostUid, hostName).catch(() => {});
@@ -93,10 +105,10 @@ export default class GameRoom {
     // Mark as left so they don't count toward alive players
     player.status = 'left';
 
+    // Do NOT expose role — it compromises the social-deduction game
     this.io.to(this.roomCode).emit('player:left', {
       uid,
       username: player.username,
-      role: player.role,
     });
 
     // Check if game is still viable
@@ -143,7 +155,7 @@ export default class GameRoom {
 
     // Override coding phase duration if host set a custom timer
     if (timerDuration && [120, 240, 360, 480].includes(timerDuration)) {
-      PHASE_DURATIONS.coding = timerDuration;
+      this.phaseDurations.coding = timerDuration;
     }
 
     // Resolve prompt: use catalog first, fall back to Firestore
@@ -198,33 +210,40 @@ export default class GameRoom {
             prompt: this.prompt,
           });
         }
-        this.timer.start(PHASE_DURATIONS.roleReveal, () => this.transitionTo('coding'));
+        this.timer.start(this.phaseDurations.roleReveal, () => this.transitionTo('coding'));
         break;
 
-      case 'coding':
+      case 'coding': {
+        // Use remaining time if resuming after a meeting, otherwise full duration
+        const codingDuration = this._codingTimeRemaining ?? this.phaseDurations.coding;
+        this._codingTimeRemaining = null; // consumed
+        this._meetingPending = false;      // reset meeting guard
         this.io.to(this.roomCode).emit('game:codingStart', {
           prompt: this.prompt,
-          duration: PHASE_DURATIONS.coding,
+          duration: codingDuration,
           language: this.settings?.language || 'javascript',
         });
-        this.timer.start(PHASE_DURATIONS.coding, () => this.transitionTo('build'));
+        this.timer.start(codingDuration, () => this.transitionTo('build'));
         break;
+      }
 
       case 'voting':
         this.meetingNumber++;
         this.votes = {};
+        // Snapshot the remaining coding time BEFORE stopping the timer
+        this._codingTimeRemaining = this.timer.getRemaining();
         this.timer.stop();
         this.io.to(this.roomCode).emit('game:votingStart', {
           meetingNumber: this.meetingNumber,
-          duration: PHASE_DURATIONS.voting,
+          duration: this.phaseDurations.voting,
           alivePlayers: this.getAlivePlayers(),
         });
-        this.timer.start(PHASE_DURATIONS.voting, () => this.resolveVoting());
+        this.timer.start(this.phaseDurations.voting, () => this.resolveVoting());
         break;
 
       case 'build':
         this.timer.stop();
-        this.io.to(this.roomCode).emit('game:buildStart', { duration: PHASE_DURATIONS.build });
+        this.io.to(this.roomCode).emit('game:buildStart', { duration: this.phaseDurations.build });
         this.runCodeExecution();
         break;
 
@@ -238,7 +257,7 @@ export default class GameRoom {
           testResults: this.testResults,
         });
         this.saveResults();
-        this.timer.start(PHASE_DURATIONS.gameEnd, () => {}); // auto-cleanup timer
+        this.timer.start(this.phaseDurations.gameEnd, () => {}); // auto-cleanup timer
         break;
     }
 
@@ -341,8 +360,12 @@ export default class GameRoom {
 
   reportBug(uid) {
     if (this.phase !== 'coding') return { success: false, error: 'Can only report during coding' };
+    // Guard against multiple meetings being queued during the 2s delay
+    if (this._meetingPending) return { success: false, error: 'A meeting is already being called' };
     const player = this.players.get(uid);
     if (!player || player.status !== 'alive') return { success: false, error: 'Not eligible' };
+
+    this._meetingPending = true;
 
     GameSessionModel.updatePlayer(this.roomCode, uid, {
       bugsReported: (player.bugsReported || 0) + 1,
@@ -360,9 +383,12 @@ export default class GameRoom {
 
   async runCodeExecution() {
     try {
-      // The frontend will need to send final code via socket event
-      // For now, use the code stored from the Yjs document
-      const code = this.finalCode || this.prompt?.starterCode || '';
+      // Try to grab the live editor content from the Yjs document first
+      let code = this.finalCode;
+      if (!code && this.yjsServer) {
+        code = this.yjsServer.getCode(this.roomCode);
+      }
+      code = code || this.prompt?.starterCode || '';
       const testCases = this.prompt?.testCases || [];
 
       if (!code || testCases.length === 0) {

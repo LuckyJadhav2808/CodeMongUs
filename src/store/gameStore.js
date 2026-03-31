@@ -421,11 +421,6 @@ const useGameStore = create((set, get) => ({
 
     // Game end
     socket.on('game:end', ({ winner, players, testResults }) => {
-      const { myRole, roomCode: storeRoomCode, gameStartTime } = get();
-      const isWin = (myRole === 'impostor' && winner === 'impostor') ||
-                    (myRole === 'crewmate' && winner === 'crewmates');
-      const durationMs = gameStartTime ? Date.now() - gameStartTime : 0;
-
       set({
         gameResult: winner,
         players,
@@ -435,14 +430,12 @@ const useGameStore = create((set, get) => ({
         showImpostorPanel: false,
       });
 
-      // Auto-record match to Firestore
-      get().recordGameEnd({
-        role: myRole || 'crewmate',
-        result: isWin ? 'win' : 'loss',
-        roomCode: storeRoomCode || '',
-        playerCount: players?.length || 0,
-        durationMs,
-      });
+      // Stats are written server-side by processPostGame.
+      // Refresh local copy after a short delay so the server writes have settled.
+      const { user: currentUser } = get();
+      if (currentUser?.uid) {
+        setTimeout(() => get().loadUserData(currentUser.uid), 3000);
+      }
     });
 
     // Host changed

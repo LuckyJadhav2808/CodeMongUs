@@ -110,13 +110,13 @@ const io = new SocketIO(server, {
 // Auth middleware for all socket connections
 io.use(verifySocketToken);
 
-// Game manager
-const gameManager = new GameManager(io);
-registerSocketHandlers(io, gameManager);
-
 // ─── YJS SERVER (mounted on same HTTP server at /yjs) ───
 const yjsServer = new YjsServer(server);
 yjsServer.start();
+
+// Game manager (receives yjsServer ref for code retrieval & cleanup)
+const gameManager = new GameManager(io, yjsServer);
+registerSocketHandlers(io, gameManager);
 
 // ─── START ───
 server.listen(PORT, () => {
