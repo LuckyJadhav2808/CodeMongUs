@@ -53,22 +53,30 @@ export default class YjsServer {
       this.broadcastExistingAwareness(ws, roomCode);
 
       // Listen for messages from this client
-      ws.on('message', (message) => {
+      ws.on('message', (rawMessage) => {
         try {
-          const data = new Uint8Array(message);
+          // Safely convert Node.js Buffer to Uint8Array (handles pool-sliced Buffers)
+          const data = rawMessage instanceof Buffer
+            ? new Uint8Array(rawMessage.buffer, rawMessage.byteOffset, rawMessage.byteLength)
+            : new Uint8Array(rawMessage);
+
+          if (data.length < 1) return;
           const msgType = data[0];
           const payload = data.slice(1);
 
+          // Re-pack as a clean Buffer for broadcasting (avoids ws library edge cases)
+          const broadcastBuf = Buffer.from(data);
+
           if (msgType === MSG_DOC_UPDATE) {
-            // Apply Yjs document update
+            // Apply Yjs document update to server's copy
             applyUpdate(doc, payload);
             // Broadcast to all other clients in same room
-            this.broadcastToRoom(roomCode, ws, data);
+            this.broadcastToRoom(roomCode, ws, broadcastBuf);
           } else if (msgType === MSG_AWARENESS) {
             // Cache awareness on this socket for new joiners
-            ws._yjsLastAwareness = data;
+            ws._yjsLastAwareness = broadcastBuf;
             // Relay awareness update to all other clients in same room
-            this.broadcastToRoom(roomCode, ws, data);
+            this.broadcastToRoom(roomCode, ws, broadcastBuf);
           }
         } catch (err) {
           console.error(`[Yjs] Error for room ${roomCode}:`, err.message);
@@ -109,9 +117,10 @@ export default class YjsServer {
 
   /**
    * Prefix a payload with a 1-byte message type tag.
+   * Returns a Buffer for reliable ws sending on Node.js.
    */
   tagMessage(type, payload) {
-    const tagged = new Uint8Array(1 + payload.length);
+    const tagged = Buffer.alloc(1 + payload.length);
     tagged[0] = type;
     tagged.set(payload, 1);
     return tagged;

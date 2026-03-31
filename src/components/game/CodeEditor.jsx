@@ -247,7 +247,7 @@ export default function CodeEditor() {
   // Bind Monaco to Yjs using our custom binding
   const starterInjectedRef = useRef(false);
   useEffect(() => {
-    if (!editorRef.current || !yText || !yDoc || !editorReady) return;
+    if (!editorRef.current || !yText || !yDoc || !editorReady || !isConnected) return;
 
     // Destroy previous binding (e.g. when language changes)
     if (bindingRef.current) {
@@ -255,40 +255,35 @@ export default function CodeEditor() {
       bindingRef.current = null;
     }
 
-    // Wait for Yjs to sync from server before deciding to inject starter code
-    const timer = setTimeout(() => {
-      try {
-        const editor = editorRef.current;
-        if (!editor) return;
-        const model = editor.getModel();
-        if (!model) return;
+    const editor = editorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
 
-        // Only inject starter code if:
-        // 1. Y.Text is still empty (no peers have written yet)
-        // 2. We have starter code to inject
-        // 3. We haven't already injected it in this session
-        if (yText.length === 0 && prompt?.starterCode && !starterInjectedRef.current) {
-          starterInjectedRef.current = true;
-          yDoc.transact(() => {
-            yText.insert(0, prompt.starterCode);
-          });
-        }
+    // Only inject starter code if:
+    // 1. Y.Text is still empty (no peers have written yet)
+    // 2. We have starter code to inject
+    // 3. We haven't already injected it in this session
+    if (yText.length === 0 && prompt?.starterCode && !starterInjectedRef.current) {
+      starterInjectedRef.current = true;
+      yDoc.transact(() => {
+        yText.insert(0, prompt.starterCode);
+      });
+    }
 
-        const binding = bindYTextToMonaco(yText, yDoc, editor);
-        bindingRef.current = binding;
-      } catch (err) {
-        console.warn('Yjs binding error (will retry on next render):', err);
-      }
-    }, 500); // 500ms gives Yjs time to sync existing content from server
+    try {
+      const binding = bindYTextToMonaco(yText, yDoc, editor);
+      bindingRef.current = binding;
+    } catch (err) {
+      console.warn('Yjs binding error:', err);
+    }
 
     return () => {
-      clearTimeout(timer);
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
       }
     };
-  }, [editorReady, yText, yDoc, prompt, lang]);
+  }, [editorReady, yText, yDoc, prompt, lang, isConnected]);
 
   // Sync editor content to store whenever yText changes (for commit button)
   useEffect(() => {
