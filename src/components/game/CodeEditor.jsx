@@ -10,47 +10,52 @@ import { useYjs } from '../../hooks/useYjs';
  * and Monaco onDidChangeModelContent → applies edits to Y.Text.
  */
 function bindYTextToMonaco(yText, yDoc, editor) {
-  let isApplyingRemote = false;
-  let isApplyingLocal = false;
+  // Mutex flag: prevents echo loops where a remote change triggers a local
+  // change event that would be sent back over the network.
+  let isMutexLocked = false;
   const model = editor.getModel();
   if (!model) return { destroy: () => {} };
 
-  // Sync initial content
+  // Sync initial content from Y.Text → Monaco
   const initialContent = yText.toString();
   if (model.getValue() !== initialContent) {
-    isApplyingRemote = true;
+    isMutexLocked = true;
     model.setValue(initialContent);
-    isApplyingRemote = false;
+    isMutexLocked = false;
   }
 
-  // Y.Text → Monaco
+  // ─── Y.Text → Monaco (remote edits arrive here) ───
+  // Follows the OFFICIAL y-monaco binding approach:
+  //   • Apply each delta operation ONE AT A TIME with model.applyEdits()
+  //   • This is critical because Yjs deltas assume SEQUENTIAL application —
+  //     each edit mutates the model before the next position is calculated.
+  //   • Index tracking: advance for retain & insert, NOT for delete.
   const yObserver = (event) => {
-    if (isApplyingLocal) return;
-    isApplyingRemote = true;
+    if (isMutexLocked) return;
+    isMutexLocked = true;
 
-    const ops = [];
     let index = 0;
-    for (const delta of event.delta) {
-      if (delta.retain !== undefined) {
-        index += delta.retain;
-      } else if (delta.insert !== undefined) {
+    for (const op of event.delta) {
+      if (op.retain !== undefined) {
+        index += op.retain;
+      } else if (op.insert !== undefined) {
         const pos = model.getPositionAt(index);
-        // Ensure string length is correct if inserting objects/formatting
-        const textToInsert = typeof delta.insert === 'string' ? delta.insert : String(delta.insert);
-        ops.push({
+        const text = typeof op.insert === 'string' ? op.insert : String(op.insert);
+        model.applyEdits([{
           range: {
             startLineNumber: pos.lineNumber,
             startColumn: pos.column,
             endLineNumber: pos.lineNumber,
             endColumn: pos.column,
           },
-          text: textToInsert,
-        });
-        // Note: Yjs insert does NOT advance the index in the *original* string
-      } else if (delta.delete !== undefined) {
+          text,
+        }]);
+        // Advance index past the inserted text (model has already grown)
+        index += text.length;
+      } else if (op.delete !== undefined) {
         const startPos = model.getPositionAt(index);
-        const endPos = model.getPositionAt(index + delta.delete);
-        ops.push({
+        const endPos = model.getPositionAt(index + op.delete);
+        model.applyEdits([{
           range: {
             startLineNumber: startPos.lineNumber,
             startColumn: startPos.column,
@@ -58,41 +63,32 @@ function bindYTextToMonaco(yText, yDoc, editor) {
             endColumn: endPos.column,
           },
           text: '',
-        });
-        // Note: Yjs delete consumes characters from the original string, so advance index
-        index += delta.delete;
+        }]);
+        // Do NOT advance index — deleted chars are gone, next char is now at `index`
       }
     }
 
-    if (ops.length > 0) {
-      model.pushEditOperations([], ops, () => null);
-    }
-    isApplyingRemote = false;
+    isMutexLocked = false;
   };
 
   yText.observe(yObserver);
 
-  // Monaco → Y.Text
-  const monacoDisposable = model.onDidChangeModelContent((event) => {
-    if (isApplyingRemote) return;
-    isApplyingLocal = true;
+  // ─── Monaco → Y.Text (local edits sent to peers) ───
+  const monacoDisposable = model.onDidChangeContent((event) => {
+    if (isMutexLocked) return;
+    isMutexLocked = true;
 
     yDoc.transact(() => {
-      // Process changes in reverse order so indices don't shift
-      const sortedChanges = [...event.changes].sort(
-        (a, b) => b.rangeOffset - a.rangeOffset
-      );
-      for (const change of sortedChanges) {
-        if (change.rangeLength > 0) {
+      // Process changes in reverse offset order so indices don't shift
+      event.changes
+        .sort((a, b) => b.rangeOffset - a.rangeOffset)
+        .forEach((change) => {
           yText.delete(change.rangeOffset, change.rangeLength);
-        }
-        if (change.text) {
           yText.insert(change.rangeOffset, change.text);
-        }
-      }
+        });
     });
 
-    isApplyingLocal = false;
+    isMutexLocked = false;
   });
 
   return {
