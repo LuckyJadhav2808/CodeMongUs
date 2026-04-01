@@ -35,6 +35,8 @@ function bindYTextToMonaco(yText, yDoc, editor) {
         index += delta.retain;
       } else if (delta.insert !== undefined) {
         const pos = model.getPositionAt(index);
+        // Ensure string length is correct if inserting objects/formatting
+        const textToInsert = typeof delta.insert === 'string' ? delta.insert : String(delta.insert);
         ops.push({
           range: {
             startLineNumber: pos.lineNumber,
@@ -42,9 +44,9 @@ function bindYTextToMonaco(yText, yDoc, editor) {
             endLineNumber: pos.lineNumber,
             endColumn: pos.column,
           },
-          text: delta.insert,
+          text: textToInsert,
         });
-        index += delta.insert.length;
+        // Note: Yjs insert does NOT advance the index in the *original* string
       } else if (delta.delete !== undefined) {
         const startPos = model.getPositionAt(index);
         const endPos = model.getPositionAt(index + delta.delete);
@@ -57,6 +59,8 @@ function bindYTextToMonaco(yText, yDoc, editor) {
           },
           text: '',
         });
+        // Note: Yjs delete consumes characters from the original string, so advance index
+        index += delta.delete;
       }
     }
 
