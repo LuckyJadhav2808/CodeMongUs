@@ -1,8 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import useGameStore from '../../store/gameStore';
+import { useState } from 'react';
 
 export default function CommitVotingModal() {
   const { commitProposal, respondToCommitProposal, user } = useGameStore();
+  const [hasResponded, setHasResponded] = useState(false);
 
   if (!commitProposal) return null;
 
@@ -78,8 +80,22 @@ export default function CommitVotingModal() {
               ⏱️ Auto-expires in 15 seconds
             </p>
 
-            {/* Action Buttons — only for non-proposer crewmates */}
-            {isProposer ? (
+            {/* Result Banner */}
+            {hasResult && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`px-5 py-3 text-center font-display font-bold text-sm
+                  ${commitProposal.result.approved
+                    ? 'bg-green-500/20 text-green-400 border-b border-green-500/30'
+                    : 'bg-red-500/20 text-red-400 border-b border-red-500/30'}`}
+              >
+                {commitProposal.result.approved ? '✅' : '❌'} {commitProposal.result.message}
+              </motion.div>
+            )}
+
+            {/* Action Buttons — only for non-proposer crewmates who haven't voted yet */}
+            {!hasResult && (isProposer ? (
               <div className="text-center py-2">
                 <motion.div
                   animate={{ opacity: [0.5, 1, 0.5] }}
@@ -92,27 +108,37 @@ export default function CommitVotingModal() {
             ) : (
               <div className="flex gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => respondToCommitProposal(true)}
-                  className="flex-1 py-3 rounded-xl font-display font-bold text-sm border-3 
-                    border-green-500 bg-green-500/10 text-green-400 hover:bg-green-500/20 
-                    transition-colors cursor-pointer"
+                  whileHover={!hasResponded ? { scale: 1.03 } : {}}
+                  whileTap={!hasResponded ? { scale: 0.97 } : {}}
+                  onClick={() => {
+                    if (hasResponded) return;
+                    setHasResponded(true);
+                    respondToCommitProposal(true);
+                  }}
+                  disabled={hasResponded}
+                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm border-3 
+                    border-green-500 text-green-400 transition-colors
+                    ${hasResponded ? 'opacity-40 cursor-not-allowed bg-transparent' : 'bg-green-500/10 hover:bg-green-500/20 cursor-pointer'}`}
                 >
                   ✅ Approve
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => respondToCommitProposal(false)}
-                  className="flex-1 py-3 rounded-xl font-display font-bold text-sm border-3 
-                    border-red-500 bg-red-500/10 text-red-400 hover:bg-red-500/20 
-                    transition-colors cursor-pointer"
+                  whileHover={!hasResponded ? { scale: 1.03 } : {}}
+                  whileTap={!hasResponded ? { scale: 0.97 } : {}}
+                  onClick={() => {
+                    if (hasResponded) return;
+                    setHasResponded(true);
+                    respondToCommitProposal(false);
+                  }}
+                  disabled={hasResponded}
+                  className={`flex-1 py-3 rounded-xl font-display font-bold text-sm border-3 
+                    border-red-500 text-red-400 transition-colors
+                    ${hasResponded ? 'opacity-40 cursor-not-allowed bg-transparent' : 'bg-red-500/10 hover:bg-red-500/20 cursor-pointer'}`}
                 >
                   ❌ Reject
                 </motion.button>
               </div>
-            )}
+            ))}
           </div>
         </motion.div>
       </motion.div>

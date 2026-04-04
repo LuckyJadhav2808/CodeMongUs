@@ -508,11 +508,14 @@ const useGameStore = create((set, get) => ({
     });
 
     socket.on('commit:result', ({ approved, message }) => {
-      if (approved) {
-        // Code was actually submitted by the server
-        console.log('✅ Commit approved and submitted!');
-      }
-      // Clear the proposal after a brief delay so users see the result
+      console.log(approved ? '✅ Commit approved and submitted!' : '❌ Commit rejected:', message);
+      // Stamp a result onto the proposal so the modal can display it
+      set((s) => ({
+        commitProposal: s.commitProposal
+          ? { ...s.commitProposal, result: { approved, message } }
+          : null,
+      }));
+      // Clear the proposal after 3s so users can read the outcome
       setTimeout(() => set({ commitProposal: null }), 3000);
     });
   },
