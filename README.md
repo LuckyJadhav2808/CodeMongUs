@@ -105,20 +105,20 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         CLIENT (React + Vite)                   │
-│                                                                 │
+┌────────────────────────────────────────────────────────────────┐
+│                         CLIENT (React + Vite)                  │
+│                                                                │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │  Auth Layer  │  │  Zustand     │  │   Framer Motion UI   │  │
 │  │  (Firebase)  │  │  Game Store  │  │   + TailwindCSS      │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────────────────────┘  │
-│         │                 │                                     │
+│         │                 │                                    │
 │         │         ┌───────▼──────────┐                         │
 │         │         │   Custom Hooks   │                         │
 │         │         │  useYjs  useTimer│                         │
 │         │         │  useVoting       │                         │
 │         │         └───────┬──────────┘                         │
-└─────────┼─────────────────┼───────────────────────────────────-┘
+└─────────┼─────────────────┼────────────────────────────────────┘
           │                 │
           │    Firebase     │ Socket.io + Y-WebSocket
           │    Auth Token   │
@@ -126,18 +126,18 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SERVER (Node.js + Express)                   │
 │                                                                 │
-│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │  REST API      │  │  Socket.io   │  │  YjsServer       │   │
-│  │  /api/auth     │  │  GameManager │  │  (Y-WebSocket)   │   │
-│  │  /api/games    │  │  Socket      │  │  /yjs endpoint   │   │
-│  │  /api/prompts  │  │  Handlers    │  └──────────────────┘   │
-│  │  /api/reports  │  └──────────────┘                         │
-│  └────────────────┘                                           │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │  REST API      │  │  Socket.io   │  │  YjsServer       │     │
+│  │  /api/auth     │  │  GameManager │  │  (Y-WebSocket)   │     │
+│  │  /api/games    │  │  Socket      │  │  /yjs endpoint   │     │
+│  │  /api/prompts  │  │  Handlers    │  └──────────────────┘     │
+│  │  /api/reports  │  └──────────────┘                           │
+│  └────────────────┘                                             │
 │                                                                 │
-│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Firebase Admin │  │  Piston API  │  │  Rate Limiter    │   │
-│  │  (Auth Verify) │  │ (Code Runner)│  │  + Helmet        │   │
-│  └────────────────┘  └──────────────┘  └──────────────────┘   │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │ Firebase Admin │  │  Piston API  │  │  Rate Limiter    │     │
+│  │  (Auth Verify) │  │ (Code Runner)│  │  + Helmet        │     │
+│  └────────────────┘  └──────────────┘  └──────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -343,44 +343,44 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 ```
          ┌─────────────────────────────────┐
-         │  1. LOGIN  (Firebase Auth)       │
+         │  1. LOGIN  (Firebase Auth)      │
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  2. LOBBY  (Create / Join Room)  │  ← Share room code
+         │  2. LOBBY  (Create / Join Room) │  ← Share room code
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  3. ROLE REVEAL  (Animated)      │  ← Crewmate 🟦 or Impostor 🔴
+         │  3. ROLE REVEAL  (Animated)     │  ← Crewmate 🟦 or Impostor 🔴
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  4. CODING PHASE                 │
-         │   • Crewmates: Solve DSA problem │
-         │   • Impostor:  Sabotage + blend  │
-         │   • Live Yjs sync for all users  │
+         │  4. CODING PHASE                │
+         │   • Crewmates: Solve DSA proble │
+         │   • Impostor:  Sabotage + blen  │
+         │   • Live Yjs sync for all uses  │
          └──────────────┬──────────────────┘
                     ┌───┴───┐
                     │       │
          ┌──────────▼──┐  ┌─▼────────────────────┐
-         │  REPORT BUG  │  │  PROPOSE COMMIT       │
-         │  (Emergency  │  │  (Consensus vote to   │
-         │   Meeting)   │  │   run & submit code)  │
-         └──────┬───────┘  └─────────┬────────────┘
+         │  REPORT BUG  │  │  PROPOSE COMMIT     │
+         │  (Emergency  │  │  (Consensus vote to │
+         │   Meeting)   │  │   run & submit code)│
+         └──────┬───────┘  └─────────┬───────────┘
                 │                    │
     ┌───────────▼────────┐  ┌────────▼──────────────┐
     │  5. VOTE  (Eject?) │  │  6. CODE EXECUTION    │
-    │  Players debate    │  │  Piston API runs code  │
-    │  & cast votes      │  │  against test cases    │
+    │  Players debate    │  │  Piston API runs code │
+    │  & cast votes      │  │  against test cases   │
     └───────────┬────────┘  └────────┬──────────────┘
                 │                    │
          ┌──────▼────────────────────▼──────┐
-         │  7. GAME OVER                     │
-         │   🟦 Crewmates Win: Impostor      │
-         │      ejected OR code passes       │
-         │   🔴 Impostor Wins: Wrong code    │
-         │      submitted OR timer expires   │
-         └───────────────────────────────────┘
+         │  7. GAME OVER                    │
+         │   🟦 Crewmates Win: Impostor    │
+         │      ejected OR code passes      │
+         │   🔴 Impostor Wins: Wrong code   │
+         │      submitted OR timer expires  │
+         └──────────────────────────────────┘
 ```
 
 ---
