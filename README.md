@@ -343,44 +343,44 @@ VITE_FIREBASE_APP_ID=your_app_id
 
 ```
          ┌─────────────────────────────────┐
-         │  1. LOGIN  (Firebase Auth)       │
+         │  1. LOGIN  (Firebase Auth)      │
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  2. LOBBY  (Create / Join Room)  │  ← Share room code
+         │  2. LOBBY  (Create / Join Room) │  ← Share room code
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  3. ROLE REVEAL  (Animated)      │  ← Crewmate 🟦 or Impostor 🔴
+         │  3. ROLE REVEAL  (Animated)     │  ← Crewmate 🟦 or Impostor 🔴
          └──────────────┬──────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  4. CODING PHASE                 │
-         │   • Crewmates: Solve DSA problem │
-         │   • Impostor:  Sabotage + blend  │
-         │   • Live Yjs sync for all users  │
+         │  4. CODING PHASE                │
+         │   • Crewmates: Solve DSA proble │
+         │   • Impostor:  Sabotage + blen  │
+         │   • Live Yjs sync for all uses  │
          └──────────────┬──────────────────┘
                     ┌───┴───┐
                     │       │
          ┌──────────▼──┐  ┌─▼────────────────────┐
-         │  REPORT BUG  │  │  PROPOSE COMMIT       │
-         │  (Emergency  │  │  (Consensus vote to   │
-         │   Meeting)   │  │   run & submit code)  │
-         └──────┬───────┘  └─────────┬────────────┘
+         │  REPORT BUG  │  │  PROPOSE COMMIT     │
+         │  (Emergency  │  │  (Consensus vote to │
+         │   Meeting)   │  │   run & submit code)│
+         └──────┬───────┘  └─────────┬───────────┘
                 │                    │
     ┌───────────▼────────┐  ┌────────▼──────────────┐
     │  5. VOTE  (Eject?) │  │  6. CODE EXECUTION    │
-    │  Players debate    │  │  Piston API runs code  │
-    │  & cast votes      │  │  against test cases    │
+    │  Players debate    │  │  Piston API runs code │
+    │  & cast votes      │  │  against test cases   │
     └───────────┬────────┘  └────────┬──────────────┘
                 │                    │
          ┌──────▼────────────────────▼──────┐
-         │  7. GAME OVER                     │
-         │   🟦 Crewmates Win: Impostor      │
-         │      ejected OR code passes       │
-         │   🔴 Impostor Wins: Wrong code    │
-         │      submitted OR timer expires   │
-         └───────────────────────────────────┘
+         │  7. GAME OVER                    │
+         │   🟦 Crewmates Win: Impostor    │
+         │      ejected OR code passes      │
+         │   🔴 Impostor Wins: Wrong code   │
+         │      submitted OR timer expires  │
+         └──────────────────────────────────┘
 ```
 
 ---
