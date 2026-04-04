@@ -105,20 +105,20 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         CLIENT (React + Vite)                   │
-│                                                                 │
+┌────────────────────────────────────────────────────────────────┐
+│                         CLIENT (React + Vite)                  │
+│                                                                │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │  Auth Layer  │  │  Zustand     │  │   Framer Motion UI   │  │
 │  │  (Firebase)  │  │  Game Store  │  │   + TailwindCSS      │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────────────────────┘  │
-│         │                 │                                     │
+│         │                 │                                    │
 │         │         ┌───────▼──────────┐                         │
 │         │         │   Custom Hooks   │                         │
 │         │         │  useYjs  useTimer│                         │
 │         │         │  useVoting       │                         │
 │         │         └───────┬──────────┘                         │
-└─────────┼─────────────────┼───────────────────────────────────-┘
+└─────────┼─────────────────┼────────────────────────────────────┘
           │                 │
           │    Firebase     │ Socket.io + Y-WebSocket
           │    Auth Token   │
@@ -126,18 +126,18 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 ┌─────────────────────────────────────────────────────────────────┐
 │                    SERVER (Node.js + Express)                   │
 │                                                                 │
-│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │  REST API      │  │  Socket.io   │  │  YjsServer       │   │
-│  │  /api/auth     │  │  GameManager │  │  (Y-WebSocket)   │   │
-│  │  /api/games    │  │  Socket      │  │  /yjs endpoint   │   │
-│  │  /api/prompts  │  │  Handlers    │  └──────────────────┘   │
-│  │  /api/reports  │  └──────────────┘                         │
-│  └────────────────┘                                           │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │  REST API      │  │  Socket.io   │  │  YjsServer       │     │
+│  │  /api/auth     │  │  GameManager │  │  (Y-WebSocket)   │     │
+│  │  /api/games    │  │  Socket      │  │  /yjs endpoint   │     │
+│  │  /api/prompts  │  │  Handlers    │  └──────────────────┘     │
+│  │  /api/reports  │  └──────────────┘                           │
+│  └────────────────┘                                             │
 │                                                                 │
-│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │ Firebase Admin │  │  Piston API  │  │  Rate Limiter    │   │
-│  │  (Auth Verify) │  │ (Code Runner)│  │  + Helmet        │   │
-│  └────────────────┘  └──────────────┘  └──────────────────┘   │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │ Firebase Admin │  │  Piston API  │  │  Rate Limiter    │     │
+│  │  (Auth Verify) │  │ (Code Runner)│  │  + Helmet        │     │
+│  └────────────────┘  └──────────────┘  └──────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
