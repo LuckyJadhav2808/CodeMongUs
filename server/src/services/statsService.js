@@ -5,22 +5,29 @@ import { checkAchievements, saveUserAchievements } from '../models/Achievement.j
  * Process post-game statistics for a player.
  * Updates user stats and checks for new achievements.
  */
-export async function processPostGame(uid, role, won) {
+export async function processPostGame(uid, role, won, metrics = {}) {
   try {
-    const statUpdates = { totalGames: 1 };
+    const statUpdates = {
+      gamesPlayed: 1,
+      totalPlayTimeMs: metrics.totalPlayTimeMs || 0,
+      totalVotesCast: metrics.totalVotesCast || 0,
+      sabotagesUsed: metrics.sabotagesUsed || 0,
+      bugReports: metrics.bugReports || 0,
+      gitXp: metrics.xpEarned || 0,
+    };
 
     if (role === 'impostor') {
-      statUpdates.impostorGames = 1;
+      statUpdates.timesImpostor = 1;
       if (won) statUpdates.impostorWins = 1;
     } else {
-      statUpdates.crewmateGames = 1;
+      statUpdates.timesCrewmate = 1;
       if (won) statUpdates.crewmateWins = 1;
     }
 
     if (won) {
-      statUpdates.wins = 1;
+      statUpdates.gamesWon = 1;
     } else {
-      statUpdates.losses = 1;
+      statUpdates.gamesLost = 1;
     }
 
     await updateStats(uid, statUpdates);

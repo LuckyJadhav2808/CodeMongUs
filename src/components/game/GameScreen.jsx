@@ -9,9 +9,11 @@ import VotingModal from '../voting/VotingModal';
 import ImpostorDashboard from '../impostor/ImpostorDashboard';
 import CommitVotingModal from './CommitVotingModal';
 import useGameStore from '../../store/gameStore';
+import useSoundManager from '../../hooks/useSoundManager';
 
 export default function GameScreen() {
-  const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds, unlockedHints } = useGameStore();
+  const { showVoting, setShowVoting, showImpostorPanel, activeSabotage, shipIntegrity, prompt, timerSeconds, unlockedHints, commitFailedToast } = useGameStore();
+  useSoundManager();
   const [timerExpired, setTimerExpired] = useState(false);
   const [codingStarted, setCodingStarted] = useState(false);
   const prevTimerRef = useRef(timerSeconds);
@@ -52,6 +54,18 @@ export default function GameScreen() {
           <ActionButtons />
         </div>
       </motion.header>
+
+      {/* Commit Failed Toast */}
+      {commitFailedToast && (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -40, opacity: 0 }}
+          className="mx-auto mt-2 px-6 py-3 rounded-xl border-3 border-error bg-error-container text-error font-display font-bold text-sm text-center shadow-chunky z-40 max-w-lg"
+        >
+          ❌ {commitFailedToast}
+        </motion.div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -122,12 +136,26 @@ export default function GameScreen() {
                   key={idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="card !p-2 !py-1.5 !bg-tertiary-container !border-tertiary flex items-center gap-2"
+                  className={`card !p-2 !py-1.5 flex items-center gap-2 ${
+                    h.isOracle
+                      ? '!bg-purple-900/30 !border-purple-500'
+                      : '!bg-tertiary-container !border-tertiary'
+                  }`}
                 >
-                  <span className="text-sm">💡</span>
-                  <p className="text-xs font-body text-on-surface">
-                    <span className="font-bold">Hint {h.hintNumber}:</span> {h.hint}
-                  </p>
+                  <span className="text-sm">{h.isOracle ? '🔮' : '💡'}</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-body text-on-surface">
+                      <span className="font-bold">
+                        {h.isOracle ? `Oracle Hint #${h.hintNumber}` : `Hint ${h.hintNumber}`}:
+                      </span>{' '}
+                      {h.hint}
+                    </p>
+                    {h.isOracle && (
+                      <p className="text-[10px] text-purple-400 mt-0.5">
+                        Requested by {h.requestedBy} • -{h.timeCost}s penalty
+                      </p>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -167,9 +195,9 @@ export default function GameScreen() {
       {activeSabotage === 'flashbang' && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0.8, 0] }}
-          transition={{ duration: 5 }}
-          className="fixed inset-0 bg-white z-[200] pointer-events-none"
+          animate={{ opacity: [0, 1, 1, 1, 0] }}
+          transition={{ duration: 5, times: [0, 0.02, 0.5, 0.9, 1] }}
+          className="fixed inset-0 bg-white z-[9998] pointer-events-none"
         />
       )}
       {/* Timer Expired Overlay — prevents white screen while server transitions */}

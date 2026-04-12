@@ -71,7 +71,8 @@ export default {
         },
         flashbang: {
           '0%': { backgroundColor: 'rgba(255,255,255,0)' },
-          '10%': { backgroundColor: 'rgba(255,255,255,0.95)' },
+          '2%': { backgroundColor: 'rgba(255,255,255,1)' },
+          '90%': { backgroundColor: 'rgba(255,255,255,1)' },
           '100%': { backgroundColor: 'rgba(255,255,255,0)' },
         },
         pulse_warning: {
@@ -97,7 +98,7 @@ export default {
       },
       animation: {
         shake: 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
-        flashbang: 'flashbang 1.5s ease-out forwards',
+        flashbang: 'flashbang 5s ease-out forwards',
         pulse_warning: 'pulse_warning 0.8s ease-in-out infinite',
         glitch: 'glitch 0.4s linear',
         float_up: 'float_up 3s ease-in-out infinite',

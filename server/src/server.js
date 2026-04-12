@@ -18,6 +18,7 @@ import userRoutes from './routes/users.js';
 import gameRoutes from './routes/games.js';
 import promptRoutes from './routes/prompts.js';
 import reportRoutes from './routes/reports.js';
+import practiceRoutes from './routes/practice.js';
 
 // Game engine
 import GameManager from './game/GameManager.js';
@@ -83,6 +84,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // 404 handler
 app.use((req, res) => {

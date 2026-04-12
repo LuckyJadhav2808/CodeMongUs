@@ -7,6 +7,7 @@ import {
   updateUserStats,
   addMatchRecord,
   getMatchHistory,
+  listenToLeaderboard,
 } from '../services/firestoreService';
 
 // Load profile from localStorage
@@ -46,7 +47,7 @@ const useGameStore = create((set, get) => ({
     impostorWins: 0, crewmateWins: 0,
     totalVotesCast: 0, correctVotes: 0,
     timesSabotaged: 0, bugReports: 0,
-    totalPlayTimeMs: 0,
+    totalPlayTimeMs: 0, gitXp: 0,
   },
   setUserStats: (stats) => set({ userStats: stats }),
 
@@ -138,6 +139,8 @@ const useGameStore = create((set, get) => ({
   gameResult: null,
   testResults: null,
   gameStartTime: null,
+  gameEndTaunt: null,
+  xpBreakdown: null,
 
   // ──────── GAME SETTINGS (host-configured) ────────
   gameSettings: {
@@ -167,6 +170,8 @@ const useGameStore = create((set, get) => ({
   // ──────── COMMIT PROPOSAL ────────
   commitProposal: null, // { proposerUid, proposerName, code, votes: {uid: bool}, total, needed }
   setCommitProposal: (proposal) => set({ commitProposal: proposal }),
+  commitChancesRemaining: 2,
+  commitFailedToast: null,
 
   // ──────── SABOTAGE ────────
   activeSabotage: null,
@@ -183,6 +188,52 @@ const useGameStore = create((set, get) => ({
 
   // ──────── SHIP INTEGRITY (cosmetic) ────────
   shipIntegrity: 100,
+
+  // ──────── PRACTICE MODE ────────
+  practicePrompt: null,
+
+  startPractice: async (promptId, language = 'javascript') => {
+    try {
+      const user = get().user;
+      if (!user) return;
+      const { auth: firebaseAuth } = await import('../config/firebase');
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const res = await fetch(`${API_URL}/api/practice/prompt/${promptId}?language=${language}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        set({ practicePrompt: data.prompt, screen: 'practice' });
+      }
+    } catch (err) {
+      console.error('Failed to start practice:', err);
+    }
+  },
+
+  // ──────── LEADERBOARD ────────
+  globalLeaderboard: [],
+  _leaderboardUnsub: null,
+
+  startLeaderboardListener: () => {
+    const { _leaderboardUnsub } = get();
+    if (_leaderboardUnsub) return; // already listening
+    const unsub = listenToLeaderboard((leaders) => {
+      set({ globalLeaderboard: leaders });
+    });
+    set({ _leaderboardUnsub: unsub });
+  },
+
+  stopLeaderboardListener: () => {
+    const { _leaderboardUnsub } = get();
+    if (_leaderboardUnsub) {
+      _leaderboardUnsub();
+      set({ _leaderboardUnsub: null });
+    }
+  },
+
+  // ──────── MATCH HIGHLIGHTS (post-game) ────────
+  matchHighlights: [],
 
   // ═══════════════════════════════════════════════
   //  SOCKET ACTIONS — emit events to the server
@@ -296,6 +347,12 @@ const useGameStore = create((set, get) => ({
     socket.emit('chat:send', { message });
   },
 
+  sendGhostChat: (message) => {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('chat:ghostMessage', { message });
+  },
+
   submitCode: (code) => {
     const socket = getSocket();
     if (!socket) return;
@@ -360,7 +417,7 @@ const useGameStore = create((set, get) => ({
 
     // Role reveal (private per-player)
     socket.on('game:roleReveal', ({ role, prompt }) => {
-      set({ myRole: role, prompt, screen: 'roleReveal', showRoleReveal: true });
+      set({ myRole: role, prompt, screen: 'roleReveal', showRoleReveal: true, commitChancesRemaining: 2 });
       // After reveal animation, transition to game
       setTimeout(() => {
         set({ screen: 'game', showRoleReveal: false });
@@ -379,6 +436,14 @@ const useGameStore = create((set, get) => ({
         updates.gameSettings = { ...get().gameSettings, language };
       }
       set(updates);
+    });
+
+    // Commit failed — update chances remaining and show toast with taunt
+    socket.on('game:commitFailed', ({ chancesLeft, message, taunt }) => {
+      const toastText = taunt ? `${message} — "${taunt}"` : message;
+      set({ commitChancesRemaining: chancesLeft ?? 0, commitFailedToast: toastText });
+      // Auto-clear toast after 5s
+      setTimeout(() => set({ commitFailedToast: null }), 5000);
     });
 
     // Timer tick
@@ -420,11 +485,18 @@ const useGameStore = create((set, get) => ({
     });
 
     // Game end
-    socket.on('game:end', ({ winner, players, testResults }) => {
+    socket.on('game:end', ({ winner, players, testResults, matchHighlights, taunt, xpResults }) => {
+      // Find current user's XP breakdown
+      const { user: currentUser } = get();
+      const myXp = currentUser?.uid && xpResults ? xpResults[currentUser.uid] : null;
+
       set({
         gameResult: winner,
         players,
         testResults,
+        matchHighlights: matchHighlights || [],
+        gameEndTaunt: taunt || null,
+        xpBreakdown: myXp || null,
         screen: 'gameEnd',
         showVoting: false,
         showImpostorPanel: false,
@@ -432,7 +504,6 @@ const useGameStore = create((set, get) => ({
 
       // Stats are written server-side by processPostGame.
       // Refresh local copy after a short delay so the server writes have settled.
-      const { user: currentUser } = get();
       if (currentUser?.uid) {
         setTimeout(() => get().loadUserData(currentUser.uid), 3000);
       }
@@ -446,6 +517,16 @@ const useGameStore = create((set, get) => ({
     // Chat
     socket.on('chat:message', (msg) => {
       set((s) => ({ chatMessages: [...s.chatMessages, msg] }));
+    });
+
+    // Ghost Chat (eliminated players only)
+    socket.on('chat:ghostMessage', (msg) => {
+      set((s) => ({ chatMessages: [...s.chatMessages, { ...msg, isGhost: true }] }));
+    });
+
+    // Chat history on reconnection
+    socket.on('chat:history', (messages) => {
+      set({ chatMessages: messages });
     });
 
     // ──── SABOTAGE EFFECTS (received by crewmates) ────
@@ -488,10 +569,23 @@ const useGameStore = create((set, get) => ({
       set({ gameResult: { winner, reason, forced: true } });
     });
 
-    // Hint received
+    // Hint received (static catalog hints)
     socket.on('game:hintReceived', ({ hint, hintNumber, totalHints }) => {
       set((s) => ({
         unlockedHints: [...s.unlockedHints, { hint, hintNumber, totalHints }],
+      }));
+    });
+
+    // Oracle hint received (AI-driven)
+    socket.on('game:oracleHint', ({ hint, hintNumber, requestedBy, timeCost }) => {
+      set((s) => ({
+        unlockedHints: [...s.unlockedHints, {
+          hint,
+          hintNumber,
+          isOracle: true,
+          requestedBy,
+          timeCost,
+        }],
       }));
     });
 

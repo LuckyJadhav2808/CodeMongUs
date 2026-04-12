@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import useGameStore from '../../store/gameStore';
 import { getAvatarWithStyle } from '../../utils/avatarGenerator';
+import { getRankForXp, getXpProgress } from '../../utils/rankUtils';
 
 const STAT_CARDS = [
   { key: 'gamesPlayed', label: 'Games Played', icon: '🎮', color: 'bg-secondary-container', textColor: 'text-secondary' },
@@ -36,6 +37,10 @@ export default function StatsPanel() {
     ? Math.round((userStats.gamesWon / userStats.gamesPlayed) * 100)
     : 0;
 
+  const xp = userStats.gitXp || 0;
+  const rank = getRankForXp(xp);
+  const progress = getXpProgress(xp);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -53,10 +58,13 @@ export default function StatsPanel() {
             />
           </div>
           <div className="flex-1">
-            <h2 className="font-display font-extrabold text-2xl text-on-surface">{displayName}</h2>
-            <p className="font-body text-sm text-on-surface-variant">{user?.email || 'Player'}</p>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display font-extrabold text-2xl text-on-surface">{displayName}</h2>
+              <span className="text-xl">{rank.badge}</span>
+            </div>
+            <p className="font-body text-sm text-on-surface-variant">{rank.title} • {user?.email || 'Player'}</p>
             <div className="flex items-center gap-3 mt-2">
-              <span className="badge-blue">{userStats.gamesPlayed} games</span>
+              <span className="badge-blue">⚡ {xp.toLocaleString()} GitXP</span>
               <span className="badge-yellow">{winRate}% win rate</span>
             </div>
           </div>
@@ -85,6 +93,35 @@ export default function StatsPanel() {
               <p className="font-body text-xs text-on-surface-variant font-medium">{stat.label}</p>
             </motion.div>
           ))}
+        </div>
+      </div>
+
+      {/* Rank Progress */}
+      <div className="card mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display font-bold text-sm text-on-surface flex items-center gap-2">
+            {rank.badge} Rank Progress
+          </h3>
+          {progress.nextRank && (
+            <span className="font-body text-xs text-on-surface-variant">
+              Next: {progress.nextRank.badge} {progress.nextRank.title}
+            </span>
+          )}
+        </div>
+        <div className="h-6 bg-surface-container rounded-full border-2 border-outline-variant overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progress.percent}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="h-full rounded-full"
+            style={{ background: 'linear-gradient(90deg, #3046e3, #8b5cf6, #caceff)' }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-xs font-body text-on-surface-variant">
+            {xp.toLocaleString()} / {(progress.nextRank?.xpRequired || xp).toLocaleString()} XP
+          </span>
+          <span className="font-display font-bold text-sm text-secondary">{progress.percent}%</span>
         </div>
       </div>
 

@@ -8,6 +8,11 @@ import { useState, useRef, useEffect } from 'react';
 export default function VotingModal({ isOpen, onClose }) {
   const { players, voteData, voteResult, castVote, skipVote, chatMessages, sendChat, user } = useGameStore();
   const alivePlayers = voteData?.alivePlayers || players.filter((p) => p.status === 'alive');
+
+  // Ghost detection
+  const myStatus = players?.find(p => p.uid === user?.uid)?.status;
+  const amGhost = myStatus && myStatus !== 'alive';
+
   const [myVote, setMyVote] = useState(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -51,18 +56,18 @@ export default function VotingModal({ isOpen, onClose }) {
       {isOpen && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-on-surface/60 backdrop-blur-md z-40" />
+            className="fixed inset-0 bg-on-surface/60 backdrop-blur-md z-[140]" />
 
           <motion.div
             initial={{ opacity: 0, y: 80, scale: 0.85 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 80, scale: 0.85 }}
             transition={{ type: 'spring', damping: 20, stiffness: 250 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4"
           >
             <div className="bg-surface-lowest border-3 border-on-surface rounded-3xl shadow-chunky-lg 
               max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              
+
               {/* Header */}
               <div className="px-8 py-5 border-b-3 border-on-surface gradient-primary flex items-center justify-between">
                 <div>
@@ -93,21 +98,28 @@ export default function VotingModal({ isOpen, onClose }) {
                 {/* Vote Grid */}
                 <div className="flex-1">
                   <h3 className="font-display font-bold text-sm mb-4 flex items-center gap-2">
-                    <span>🗳️</span> CAST YOUR VOTE
+                    <span>🗳️</span> {amGhost ? 'SPECTATING VOTE' : 'CAST YOUR VOTE'}
                   </h3>
+
+                  {amGhost && (
+                    <div className="mb-3 px-4 py-2 rounded-xl bg-purple-900/30 border border-purple-500/40 text-center">
+                      <p className="text-xs font-body text-purple-300">👻 You are a ghost — you can watch but cannot vote</p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     {alivePlayers.map((player) => {
                       const isMyVote = myVote === player.uid;
                       return (
                         <motion.button
                           key={player.uid}
-                          whileHover={!hasVoted ? { scale: 1.03, y: -2 } : {}}
-                          whileTap={!hasVoted ? { scale: 0.97 } : {}}
+                          whileHover={!hasVoted && !amGhost ? { scale: 1.03, y: -2 } : {}}
+                          whileTap={!hasVoted && !amGhost ? { scale: 0.97 } : {}}
                           onClick={() => handleCastVote(player.uid)}
                           className={`player-card text-left relative
                             ${isMyVote ? '!bg-primary-container !border-primary shadow-chunky-red' : ''}
-                            ${hasVoted && !isMyVote ? 'opacity-60' : ''}`}
-                          disabled={hasVoted}
+                            ${(hasVoted && !isMyVote) || amGhost ? 'opacity-60' : ''}`}
+                          disabled={hasVoted || amGhost}
                         >
                           <Avatar name={player.username} size={42} showBorder={false} />
                           <div className="flex-1 min-w-0">
@@ -122,7 +134,7 @@ export default function VotingModal({ isOpen, onClose }) {
                   </div>
 
                   <div className="mt-4">
-                    <Button variant="ghost" onClick={handleSkip} disabled={hasVoted} icon="⏭️" className="w-full">
+                    <Button variant="ghost" onClick={handleSkip} disabled={hasVoted || amGhost} icon="⏭️" className="w-full">
                       Skip Vote
                     </Button>
                   </div>

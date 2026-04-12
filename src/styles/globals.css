@@ -150,8 +150,9 @@
 
   /* === SABOTAGE OVERLAY === */
   .sabotage-overlay {
-    @apply fixed inset-0 pointer-events-none z-50;
-    animation: flashbang 1.5s ease-out forwards;
+    @apply fixed inset-0 pointer-events-none;
+    z-index: 9999;
+    animation: flashbang 5s ease-out forwards;
   }
 
   /* === TIMER WARNING === */

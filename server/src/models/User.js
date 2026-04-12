@@ -23,16 +23,19 @@ export async function createOrUpdateUser(uid, data) {
     avatarUrl: data.picture || null,
     isAnonymous: data.isAnonymous || false,
     stats: {
-      totalGames: 0,
-      wins: 0,
-      losses: 0,
-      impostorGames: 0,
+      gamesPlayed: 0,
+      gamesWon: 0,
+      gamesLost: 0,
+      timesImpostor: 0,
       impostorWins: 0,
-      crewmateGames: 0,
+      timesCrewmate: 0,
       crewmateWins: 0,
       sabotagesUsed: 0,
       bugsReported: 0,
-      codeContributions: 0,
+      bugReports: 0,
+      totalPlayTimeMs: 0,
+      totalVotesCast: 0,
+      gitXp: 0,
     },
     achievements: [],
     createdAt: FieldValue.serverTimestamp(),
@@ -74,7 +77,7 @@ export async function deleteUser(uid) {
   await db.collection(COLLECTION).doc(uid).delete();
 }
 
-export async function getLeaderboard(limit = 20, sortBy = 'stats.wins') {
+export async function getLeaderboard(limit = 20, sortBy = 'stats.gamesWon') {
   if (!db) return [];
   const snap = await db.collection(COLLECTION)
     .orderBy(sortBy, 'desc')

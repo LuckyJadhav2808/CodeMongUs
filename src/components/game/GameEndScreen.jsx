@@ -2,12 +2,22 @@ import { motion } from 'framer-motion';
 import Avatar from '../common/Avatar';
 import Button from '../common/Button';
 import useGameStore from '../../store/gameStore';
+import { getRankForXp, getXpProgress } from '../../utils/rankUtils';
 
 export default function GameEndScreen() {
-  const { gameResult, players, testResults, setScreen, myRole } = useGameStore();
+  const { gameResult, players, testResults, matchHighlights, setScreen, myRole, gameEndTaunt, xpBreakdown, userStats } = useGameStore();
   const isCrewmateWin = gameResult === 'crewmates';
   const didWin = (myRole === 'impostor' && gameResult === 'impostor') ||
                  (myRole === 'crewmate' && gameResult === 'crewmates');
+
+  const currentXp = (userStats?.gitXp || 0);
+  const rank = getRankForXp(currentXp);
+  const progress = getXpProgress(currentXp);
+
+  // Check if player ranked up (XP before this game was below current rank threshold)
+  const xpBefore = currentXp - (xpBreakdown?.total || 0);
+  const rankBefore = getRankForXp(Math.max(0, xpBefore));
+  const didRankUp = rank.level > rankBefore.level;
 
   const handlePlayAgain = () => {
     useGameStore.setState({
@@ -15,6 +25,11 @@ export default function GameEndScreen() {
       myRole: null,
       prompt: null,
       testResults: null,
+      matchHighlights: [],
+      gameEndTaunt: null,
+      xpBreakdown: null,
+      unlockedHints: [],
+      activeSabotage: null,
       showVoting: false,
       showImpostorPanel: false,
       chatMessages: [],
@@ -69,12 +84,100 @@ export default function GameEndScreen() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
-            className="font-body text-on-surface-variant text-lg mb-8"
+            className="font-body text-on-surface-variant text-lg mb-3 italic"
           >
-            {isCrewmateWin
-              ? 'The code was protected. The ship sails on.'
-              : 'The codebase has been compromised. Mission failed.'}
+            {gameEndTaunt
+              ? `"${gameEndTaunt}"`
+              : isCrewmateWin
+                ? 'The code was protected. The ship sails on.'
+                : 'The codebase has been compromised. Mission failed.'}
           </motion.p>
+
+          {/* GitXP Breakdown */}
+          {xpBreakdown && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+              className="mb-6 p-4 rounded-xl border-3 border-on-surface bg-surface-low"
+            >
+              <h3 className="font-display font-bold text-sm mb-3 uppercase tracking-wider text-on-surface-variant flex items-center justify-center gap-2">
+                ⚡ GitXP Earned
+              </h3>
+              <div className="space-y-1.5">
+                {xpBreakdown.breakdown.map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.8 + i * 0.08 }}
+                    className="flex items-center justify-between text-sm font-mono"
+                  >
+                    <span className="text-on-surface-variant">{item.label}</span>
+                    <span className={`font-bold ${item.xp >= 0 ? 'text-secondary' : 'text-primary'}`}>
+                      {item.xp >= 0 ? '+' : ''}{item.xp}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 + xpBreakdown.breakdown.length * 0.08 }}
+                className="mt-3 pt-3 border-t-2 border-outline-variant flex items-center justify-between"
+              >
+                <span className="font-display font-extrabold text-lg text-on-surface">Total</span>
+                <span className="font-display font-extrabold text-2xl text-secondary">+{xpBreakdown.total} XP</span>
+              </motion.div>
+
+              {/* Current Rank + Progress */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 + xpBreakdown.breakdown.length * 0.08 }}
+                className="mt-4 flex items-center gap-3"
+              >
+                <span className="text-2xl">{rank.badge}</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-display font-bold text-xs text-on-surface">{rank.title}</span>
+                    {progress.nextRank && (
+                      <span className="font-body text-[10px] text-on-surface-variant">
+                        {currentXp} / {progress.nextRank.xpRequired} XP
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-2.5 bg-surface-container rounded-full border border-outline-variant overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress.percent}%` }}
+                      transition={{ duration: 1, delay: 1.2 + xpBreakdown.breakdown.length * 0.08 }}
+                      className="h-full rounded-full"
+                      style={{ background: 'linear-gradient(90deg, #3046e3, #caceff)' }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Rank Up Celebration */}
+              {didRankUp && (
+                <motion.div
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 1.5, type: 'spring', damping: 8 }}
+                  className="mt-4 py-3 px-4 rounded-xl border-3 border-secondary bg-secondary-container/40 flex items-center justify-center gap-3"
+                >
+                  <span className="text-3xl">{rank.badge}</span>
+                  <div>
+                    <p className="font-display font-extrabold text-sm text-secondary">🎉 RANK UP!</p>
+                    <p className="font-body text-xs text-on-surface-variant">
+                      You are now a <strong>{rank.title}</strong>!
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
 
           {/* Test Results */}
           {testResults && (
@@ -92,6 +195,39 @@ export default function GameEndScreen() {
                   {r.passed ? '✅' : '❌'} {r.input} → {r.actual}
                 </div>
               ))}
+            </motion.div>
+          )}
+
+          {/* Match Highlights / Superlatives */}
+          {matchHighlights && matchHighlights.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85 }}
+              className="mb-6"
+            >
+              <h3 className="font-display font-bold text-sm mb-4 uppercase tracking-wider text-on-surface-variant">
+                ⭐ Match Highlights
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {matchHighlights.map((h, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.9 + i * 0.1 }}
+                    className="flex items-center gap-3 p-3 rounded-xl border-2 border-outline-variant bg-surface-lowest"
+                  >
+                    <span className="text-2xl">{h.emoji}</span>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="font-display font-bold text-xs text-on-surface">{h.title}</p>
+                      <p className="font-body text-[10px] text-on-surface-variant truncate">
+                        {h.username} • {h.value}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           )}
 
@@ -139,3 +275,4 @@ export default function GameEndScreen() {
     </motion.div>
   );
 }
+

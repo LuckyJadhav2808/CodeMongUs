@@ -91,33 +91,13 @@ export function registerSocketHandlers(io, gameManager) {
 
     // ──────── HINTS ────────
 
-    socket.on('game:requestHint', (_, callback) => {
+    socket.on('game:requestHint', async (_, callback) => {
       if (!currentRoom) return callback?.({ success: false });
       const room = gameManager.getRoom(currentRoom);
-      if (!room || !room.prompt) return callback?.({ success: false });
+      if (!room) return callback?.({ success: false });
 
-      // Only crewmates can request hints
-      const player = room.players.get(user.uid);
-      if (!player || player.role !== 'crewmate') return callback?.({ success: false, error: 'Only crewmates can request hints' });
-
-      const hints = getHints(room.prompt.id);
-      if (!room._hintsUnlocked) room._hintsUnlocked = 0;
-
-      if (room._hintsUnlocked >= hints.length) {
-        return callback?.({ success: false, error: 'No more hints available' });
-      }
-
-      const hint = hints[room._hintsUnlocked];
-      room._hintsUnlocked++;
-
-      // Send hint to ALL players in the room
-      io.to(currentRoom).emit('game:hintReceived', {
-        hint,
-        hintNumber: room._hintsUnlocked,
-        totalHints: hints.length,
-      });
-
-      callback?.({ success: true });
+      const result = await room.requestOracleHint(user.uid);
+      callback?.(result);
     });
 
     socket.on('game:reportBug', (_, callback) => {
@@ -284,12 +264,40 @@ export function registerSocketHandlers(io, gameManager) {
 
     socket.on('chat:send', ({ message }) => {
       if (!currentRoom) return;
-      io.to(currentRoom).emit('chat:message', {
+      const room = gameManager.getRoom(currentRoom);
+      const chatMsg = {
         uid: user.uid,
         username: user.name,
         message,
         timestamp: Date.now(),
-      });
+      };
+      // Store for reconnection
+      if (room) room.chatHistory.push(chatMsg);
+      io.to(currentRoom).emit('chat:message', chatMsg);
+    });
+
+    // ──────── GHOST CHAT (eliminated players only) ────────
+
+    socket.on('chat:ghostMessage', ({ message }) => {
+      if (!currentRoom) return;
+      const room = gameManager.getRoom(currentRoom);
+      if (!room) return;
+
+      const player = room.players.get(user.uid);
+      // Must exist in the player map AND not be alive
+      if (!player) return;
+      if (player.status === 'alive') return;
+
+      const ghostMsg = {
+        uid: user.uid,
+        username: user.name,
+        message,
+        timestamp: Date.now(),
+        isGhost: true,
+      };
+      // Store for reconnection
+      room.chatHistory.push(ghostMsg);
+      io.to(currentRoom).emit('chat:ghostMessage', ghostMsg);
     });
 
     // ──────── DISCONNECT ────────

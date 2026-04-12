@@ -52,6 +52,31 @@ Inspired by the mega-hit game *Among Us*, **CodeMongUs** puts players in a share
 
 ---
 
+## 🏆 Hackathon Status: Round 1 Recap & Round 2 Roadmap
+
+> **Hey Team!** Here is a quick breakdown to get everyone synced up on what we accomplished in Round 1 and what our flight plan is for the Round 2 (24-hour hackathon). 
+
+### ✅ Round 1 Recap (What's already built)
+- **Real-Time IDE:** Integrated Monaco Editor with Yjs (CRDTs) and y-websocket for completely conflict-free, multi-cursor, Google Docs-style collaborative coding.
+- **Game Engine & State Machine:** Node.js + Socket.io backend managing the full game loop: `Lobby ➔ Role Reveal ➔ Coding ➔ Voting ➔ Build ➔ Game End`.
+- **Impostor Sabotage System:** A working secret dashboard granting the Impostor abilities to Flashbang, Scramble Code, and spawn Cursor Ghosts.
+- **Remote Code Execution:** Secure, sandboxed execution of player code via the Piston API to evaluate against hidden DSA test cases. 
+- **Roles & Voting:** Anonymous "Report Bug" emergency meetings, dynamic voting tallying, and automatic ejection mechanics.
+- **Cinematic UI:** Beautiful Framer Motion animations across Neobrutalist components.
+- **Production Hosted:** Frontend on Netlify, Backend on Replit/Railway, Auth managed via Firebase.
+
+### 🚀 Target Enhancements for Round 2 (24-Hour Sprint)
+Here are the highest-impact features we should implement next to wow the judges:
+1. **AI-Driven Hints:** Integrate an LLM API to provide "Code Review" hints to Crewmates at the cost of precious game time.
+2. **Ghost Mode (Spectating):** Allow eliminated players to become "Ghosts", so they can spectate the live code editor and chat with other ghosts.
+3. **Advanced Sabotages:** E.g., "Dependency Hell" (injecting fake boilerplate code) or "Syntax Error" (silent removal of semicolons).
+4. **Specific Crewmate Roles:** Give crew members unique abilities (e.g., "QA Engineer" who can test partial code once).
+5. **Sound Design:** Add Web Audio API dramatic tracks, alarm sounds during sabotages, and keyboard clacking effects.
+6. **Mobile "Second-Screen" Impostor:** Optimize the Sabotage Dashboard for phones so the Impostor can secretly sabotage under the table.
+
+---
+
+
 ## ✨ Features
 
 ### 🔐 Authentication & Profiles

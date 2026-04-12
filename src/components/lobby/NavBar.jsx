@@ -8,6 +8,8 @@ const TABS = [
   { id: 'lobby', label: 'Lobby', icon: '⚡' },
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'stats', label: 'Stats', icon: '📊' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { id: 'rewards', label: 'Rewards', icon: '🎁' },
 ];
 
 export default function NavBar() {

@@ -46,4 +46,34 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+// POST /api/prompts/generate — AI-generate a custom debugging problem
+router.post('/generate', verifyToken, async (req, res) => {
+  try {
+    const { input, language = 'javascript' } = req.body;
+    if (!input || input.trim().length < 3) {
+      return res.status(400).json({ success: false, error: 'Please provide a topic or code snippet (min 3 chars)' });
+    }
+
+    const { generateCustomProblem } = await import('../services/problemGenerator.js');
+    const result = await generateCustomProblem(input.trim(), language);
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error });
+    }
+
+    // Register into in-memory catalog with a unique ID
+    const { registerCustomPrompt, resolvePromptForGame } = await import('../data/promptCatalog.js');
+    const customId = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    registerCustomPrompt(customId, result.prompt, language);
+
+    // Resolve it so the frontend can use it immediately
+    const resolved = resolvePromptForGame(customId, language);
+
+    res.json({ success: true, promptId: customId, prompt: resolved });
+  } catch (err) {
+    console.error('Generate prompt error:', err);
+    res.status(500).json({ success: false, error: 'Failed to generate custom problem' });
+  }
+});
+
 export default router;

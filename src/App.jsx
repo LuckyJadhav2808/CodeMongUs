@@ -10,6 +10,7 @@ import LobbyScreen from './components/lobby/LobbyScreen';
 import RoleReveal from './components/game/RoleReveal';
 import GameScreen from './components/game/GameScreen';
 import GameEndScreen from './components/game/GameEndScreen';
+import PracticeScreen from './components/practice/PracticeScreen';
 import './styles/globals.css';
 
 export default function App() {
@@ -37,6 +38,12 @@ export default function App() {
         } catch (err) {
           console.error('Socket reconnect failed:', err);
         }
+
+        // Ensure user doc exists before reading stats
+        await createUserDoc(firebaseUser.uid, {
+          displayName: firebaseUser.displayName || 'Player',
+          email: firebaseUser.email || '',
+        });
 
         // Load user data from Firestore
         await loadUserData(firebaseUser.uid);
@@ -73,14 +80,14 @@ export default function App() {
       // Register all socket event listeners
       initSocketListeners();
 
-      // Create/update user doc in Firestore
-      createUserDoc(firebaseUser.uid, {
+      // Create/update user doc in Firestore BEFORE loading
+      await createUserDoc(firebaseUser.uid, {
         displayName: firebaseUser.displayName || 'Player',
         email: firebaseUser.email || '',
-      }).catch(() => {});
+      });
 
-      // Load user data from Firestore
-      loadUserData(firebaseUser.uid);
+      // Now it is safe to load user data
+      await loadUserData(firebaseUser.uid);
 
       // Sync profile with backend
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/profile`, {
@@ -133,6 +140,7 @@ export default function App() {
       {screen === 'roleReveal' && <RoleReveal key="roleReveal" />}
       {screen === 'game' && <GameScreen key="game" />}
       {screen === 'gameEnd' && <GameEndScreen key="gameEnd" />}
+      {screen === 'practice' && <PracticeScreen key="practice" />}
     </AnimatePresence>
   );
 }

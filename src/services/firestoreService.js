@@ -9,6 +9,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  onSnapshot,
   serverTimestamp,
   increment,
 } from 'firebase/firestore';
@@ -30,6 +31,7 @@ const DEFAULT_STATS = {
   timesSabotaged: 0,
   bugReports: 0,
   totalPlayTimeMs: 0,
+  gitXp: 0,
 };
 
 // ─────────────────────────────────────────────
@@ -128,3 +130,22 @@ export async function getMatchHistory(uid, maxResults = 20) {
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+// ─────────────────────────────────────────────
+// LEADERBOARD — real-time top players
+// ─────────────────────────────────────────────
+export function listenToLeaderboard(callback, maxResults = 20) {
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, orderBy('stats.gitXp', 'desc'), limit(maxResults));
+  return onSnapshot(q, (snapshot) => {
+    const leaders = snapshot.docs.map((d) => ({
+      id: d.id,
+      displayName: d.data().displayName || 'Player',
+      avatarStyle: d.data().avatarStyle || 'bottts-neutral',
+      avatarSeed: d.data().avatarSeed || '',
+      stats: d.data().stats || {},
+    }));
+    callback(leaders);
+  });
+}
+

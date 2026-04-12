@@ -102,6 +102,10 @@ function bindYTextToMonaco(yText, yDoc, editor) {
 export default function CodeEditor() {
   const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings, setEditorCode } = useGameStore();
   const displayName = profile?.displayName || user?.name || 'Player';
+
+  // Determine if this player is a ghost (eliminated or left)
+  const myStatus = players?.find(p => p.uid === user?.uid)?.status;
+  const amGhost = myStatus && myStatus !== 'alive';
   const { yDoc, yText, isConnected, awareness, awarenessVersion, broadcastAwareness } = useYjs(roomCode, displayName);
   // Language is locked to host's selection from game settings
   const lang = gameSettings?.language || 'javascript';
@@ -301,6 +305,27 @@ export default function CodeEditor() {
   const handleEditorMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+
+    // Disable clipboard and undo shortcuts to prevent copy-paste cheating
+    const KeyMod = monaco.KeyMod;
+    const KeyCode = monaco.KeyCode;
+    const noop = () => {};
+
+    // Ctrl+C (Copy)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyC, noop);
+    // Ctrl+V (Paste)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyV, noop);
+    // Ctrl+A (Select All)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyA, noop);
+    // Ctrl+Z (Undo)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyZ, noop);
+    // Ctrl+X (Cut)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyX, noop);
+    // Ctrl+Shift+Z (Redo)
+    editor.addCommand(KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ, noop);
+    // Ctrl+Y (Redo)
+    editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyY, noop);
+
     setEditorReady(true);
   }, []);
 
@@ -381,8 +406,8 @@ export default function CodeEditor() {
           {activeSabotage === 'flashbang' && (
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.98, 0] }}
-              transition={{ duration: 1.5 }}
+              animate={{ opacity: [0, 1, 1, 1, 0] }}
+              transition={{ duration: 5, times: [0, 0.02, 0.5, 0.9, 1] }}
               className="absolute inset-0 bg-white z-30 pointer-events-none"
             />
           )}
@@ -418,6 +443,7 @@ export default function CodeEditor() {
               smoothScrolling: true,
               renderLineHighlight: 'all',
               bracketPairColorization: { enabled: true },
+              readOnly: amGhost || false,
               tabSize: 2,
             }}
           />
@@ -462,6 +488,21 @@ export default function CodeEditor() {
               />
             </div>
           ))}
+
+          {/* Ghost Spectator Overlay */}
+          {amGhost && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none"
+            >
+              <div className="bg-black/40 backdrop-blur-sm rounded-2xl px-8 py-5 text-center border border-purple-500/30 shadow-2xl">
+                <p className="text-4xl mb-2">👻</p>
+                <p className="font-display font-bold text-white text-sm">You are a Ghost</p>
+                <p className="font-body text-purple-300 text-xs mt-1">Spectating — you cannot edit code</p>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Status Bar with User Locator */}

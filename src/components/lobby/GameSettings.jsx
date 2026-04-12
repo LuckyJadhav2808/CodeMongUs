@@ -2,6 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useGameStore from '../../store/gameStore';
 import { getSocket } from '../../services/socket';
+import { auth as firebaseAuth } from '../../config/firebase';
+import Button from '../common/Button';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const DIFFICULTY_BADGES = {
   easy: { label: '🟢 Easy', color: 'bg-green-100 text-green-800 border-green-300' },
@@ -14,6 +18,10 @@ const TIMER_OPTIONS = [
   { value: 240, label: '4 min', icon: '⏱️' },
   { value: 360, label: '6 min', icon: '🕐' },
   { value: 480, label: '8 min', icon: '🐢' },
+  { value: 600, label: '10 min', icon: '⏳' },
+  { value: 900, label: '15 min', icon: '🕰️' },
+  { value: 1200, label: '20 min', icon: '⌛' },
+  { value: 1800, label: '30 min', icon: '⛺' },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -34,6 +42,9 @@ function broadcastSettings(updates) {
 export default function GameSettings({ isHost }) {
   const { gameSettings, setGameSettings, promptCatalog, fetchPrompts } = useGameStore();
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const [showCustomGen, setShowCustomGen] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [customGenerating, setCustomGenerating] = useState(false);
 
   // Fetch prompts on mount
   useEffect(() => {
@@ -119,7 +130,7 @@ export default function GameSettings({ isHost }) {
         <p className="text-[10px] font-display font-bold uppercase tracking-wider text-on-surface-variant mb-2">
           ⏰ Coding Time
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {TIMER_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -146,15 +157,26 @@ export default function GameSettings({ isHost }) {
             🎯 Coding Challenge
           </p>
           {isHost && (
-            <button
-              onClick={() => handleSelectPrompt('random')}
-              className={`px-3 py-1 rounded-lg border-2 font-display font-bold text-xs transition-all
-                ${gameSettings.promptId === 'random'
-                  ? 'border-primary bg-primary text-on-primary'
-                  : 'border-outline-variant text-on-surface-variant hover:border-primary'}`}
-            >
-              🎲 Random
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleSelectPrompt('random')}
+                className={`px-3 py-1 rounded-lg border-2 font-display font-bold text-xs transition-all
+                  ${gameSettings.promptId === 'random'
+                    ? 'border-primary bg-primary text-on-primary'
+                    : 'border-outline-variant text-on-surface-variant hover:border-primary'}`}
+              >
+                🎲 Random
+              </button>
+              <button
+                onClick={() => setShowCustomGen(!showCustomGen)}
+                className={`px-3 py-1 rounded-lg border-2 font-display font-bold text-xs transition-all
+                  ${showCustomGen
+                    ? 'border-primary bg-primary text-on-primary'
+                    : 'border-outline-variant text-on-surface-variant hover:border-primary'}`}
+              >
+                🤖 Custom AI
+              </button>
+            </div>
           )}
         </div>
 
@@ -183,6 +205,60 @@ export default function GameSettings({ isHost }) {
             <p className="text-[10px] text-on-surface-variant">A random prompt will be selected when the game starts</p>
           </div>
         )}
+
+        {/* Custom AI Generator Panel */}
+        <AnimatePresence>
+          {showCustomGen && isHost && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-3 overflow-hidden"
+            >
+              <div className="p-3 rounded-xl border-2 border-primary/50 bg-primary-container/10 space-y-3">
+                <textarea
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  placeholder={"Enter a topic or paste code..."}
+                  className="input-field !h-24 !resize-none !font-mono !text-xs"
+                  disabled={customGenerating}
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={customGenerating ? '⏳' : '🤖'}
+                  disabled={customGenerating || customInput.trim().length < 3}
+                  className="w-full"
+                  onClick={async () => {
+                    setCustomGenerating(true);
+                    try {
+                      const token = await firebaseAuth.currentUser?.getIdToken();
+                      const res = await fetch(`${API_URL}/api/prompts/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ input: customInput, language: gameSettings.language || 'javascript' }),
+                      });
+                      const data = await res.json();
+                      if (data.success && data.promptId) {
+                        handleSelectPrompt(data.promptId);
+                        setShowCustomGen(false);
+                        setCustomInput('');
+                      } else {
+                        alert(data.error || 'Failed to generate');
+                      }
+                    } catch (err) {
+                      alert('Generation failed. Check connection.');
+                    } finally {
+                      setCustomGenerating(false);
+                    }
+                  }}
+                >
+                  {customGenerating ? 'Generating...' : 'Generate Challenge'}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Category list */}
         <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">

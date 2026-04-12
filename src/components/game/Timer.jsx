@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
-import { useTimer } from '../../hooks/useTimer';
 import { useEffect } from 'react';
 
 export default function Timer({ initialSeconds = 240, autoStart = true, label = 'MISSION TIME', onExpire }) {
-  const { display, isRunning, isWarning, isCritical, isExpired, start } = useTimer(initialSeconds);
-
-  useEffect(() => {
-    if (autoStart) start();
-  }, [autoStart, start]);
+  const seconds = initialSeconds;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const display = `${minutes}:${secs.toString().padStart(2, '0')}`;
+  const isWarning = seconds <= 30 && seconds > 10;
+  const isCritical = seconds <= 10;
+  const isExpired = seconds <= 0;
 
   useEffect(() => {
     if (isExpired && onExpire) onExpire();
@@ -29,3 +30,4 @@ export default function Timer({ initialSeconds = 240, autoStart = true, label = 
     </div>
   );
 }
+

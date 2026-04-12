@@ -243,7 +243,13 @@ const PROMPT_CATALOG = [
 //  EXPORTS
 // ═══════════════════════════════════════════════
 
+// In-memory cache for AI-generated custom prompts
+const CUSTOM_PROMPTS = new Map();
+
 export function getPromptById(id) {
+  if (id && id.startsWith('custom-')) {
+    return CUSTOM_PROMPTS.get(id) || null;
+  }
   return PROMPT_CATALOG.find(p => p.id === id) || null;
 }
 
@@ -271,6 +277,34 @@ export function getCatalogList() {
 export function getHints(promptId) {
   const prompt = getPromptById(promptId);
   return prompt?.hints || [];
+}
+
+/**
+ * Register an AI-generated custom prompt into the ephemeral cache.
+ * Shapes the single-language AI output into the multi-language catalog format.
+ *
+ * @param {string} customId  - e.g. "custom-abc123"
+ * @param {object} aiPrompt  - Raw AI output { title, description, starterCode, testCases, ... }
+ * @param {string} language  - The language it was generated for
+ */
+export function registerCustomPrompt(customId, aiPrompt, language = 'javascript') {
+  const shaped = {
+    id: customId,
+    title: aiPrompt.title,
+    category: aiPrompt.category || 'Custom',
+    difficulty: aiPrompt.difficulty || 'medium',
+    description: aiPrompt.description,
+    hints: aiPrompt.hints || [],
+    functionSignature: { [language]: aiPrompt.functionSignature },
+    starterCode: { [language]: aiPrompt.starterCode },
+    testCases: (aiPrompt.testCases || []).map(tc => ({
+      input: { [language]: tc.input },
+      expected: String(tc.expected),
+      visible: tc.visible !== false,
+    })),
+  };
+  CUSTOM_PROMPTS.set(customId, shaped);
+  return shaped;
 }
 
 /**
@@ -302,3 +336,4 @@ export function resolvePromptForGame(promptId, language = 'javascript') {
 }
 
 export default PROMPT_CATALOG;
+
