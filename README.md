@@ -52,27 +52,36 @@ Inspired by the mega-hit game *Among Us*, **CodeMongUs** puts players in a share
 
 ---
 
-## 🏆 Hackathon Status: Round 1 Recap & Round 2 Roadmap
+## 🏆 What We Built
 
-> **Hey Team!** Here is a quick breakdown to get everyone synced up on what we accomplished in Round 1 and what our flight plan is for the Round 2 (24-hour hackathon). 
+> A complete real-time multiplayer social deduction coding game — from scratch.
 
-### ✅ Round 1 Recap (What's already built)
-- **Real-Time IDE:** Integrated Monaco Editor with Yjs (CRDTs) and y-websocket for completely conflict-free, multi-cursor, Google Docs-style collaborative coding.
-- **Game Engine & State Machine:** Node.js + Socket.io backend managing the full game loop: `Lobby ➔ Role Reveal ➔ Coding ➔ Voting ➔ Build ➔ Game End`.
-- **Impostor Sabotage System:** A working secret dashboard granting the Impostor abilities to Flashbang, Scramble Code, and spawn Cursor Ghosts.
-- **Remote Code Execution:** Secure, sandboxed execution of player code via the Piston API to evaluate against hidden DSA test cases. 
-- **Roles & Voting:** Anonymous "Report Bug" emergency meetings, dynamic voting tallying, and automatic ejection mechanics.
-- **Cinematic UI:** Beautiful Framer Motion animations across Neobrutalist components.
-- **Production Hosted:** Frontend on Netlify, Backend on Replit/Railway, Auth managed via Firebase.
+### Core Systems
+- **Real-Time Collaborative IDE** — Monaco Editor + Yjs CRDTs for Google Docs-style multi-cursor coding
+- **Server-Authoritative Game Engine** — Full state machine: `Lobby → Role Reveal → Coding → Voting → Build → Game End`
+- **4-Ability Sabotage System** — Flashbang, Typo Injection, Cursor Ghosting, Lag Spike with cooldowns
+- **Sandboxed Code Execution** — Piston API runs player code in isolated Docker containers
+- **Democratic Voting** — Emergency meetings, real-time vote tallying, impostor ejection
+- **2-Chance Commit Consensus** — Crewmates vote to approve code, 2 attempts to pass tests
 
-### 🚀 Target Enhancements for Round 2 (24-Hour Sprint)
-Here are the highest-impact features we should implement next to wow the judges:
-1. **AI-Driven Hints:** Integrate an LLM API to provide "Code Review" hints to Crewmates at the cost of precious game time.
-2. **Ghost Mode (Spectating):** Allow eliminated players to become "Ghosts", so they can spectate the live code editor and chat with other ghosts.
-3. **Advanced Sabotages:** E.g., "Dependency Hell" (injecting fake boilerplate code) or "Syntax Error" (silent removal of semicolons).
-4. **Specific Crewmate Roles:** Give crew members unique abilities (e.g., "QA Engineer" who can test partial code once).
-5. **Sound Design:** Add Web Audio API dramatic tracks, alarm sounds during sabotages, and keyboard clacking effects.
-6. **Mobile "Second-Screen" Impostor:** Optimize the Sabotage Dashboard for phones so the Impostor can secretly sabotage under the table.
+### Progression & Engagement (NEW)
+- **GitXP Points System** — Earn XP for wins, bug reports, correct votes, sabotages, and survival
+- **8-Tier Rank System** — Intern → Junior Dev → Mid-Level → Senior → Tech Lead → Staff → Principal → CTO
+- **19 Unlockable Rewards** — Titles and avatar frames earned through ranks and achievements
+- **Real-Time Global Leaderboard** — Live Firestore `onSnapshot` ranking by GitXP
+- **Match Highlights** — Post-game superlatives ("Top Bug Reporter", "Sabotage Master")
+- **Taunt System** — ~50 sarcastic messages on commit failures and game endings
+
+### AI & Content (NEW)
+- **AI Oracle Hints** — LLM-powered contextual debugging hints (costs -5 XP each)
+- **AI Problem Generator** — Hosts can generate brand new challenges from any topic
+- **20+ Hardcoded Challenges** — Curated prompt catalog across easy/medium/hard difficulties
+- **Practice Mode** — Solo debugging environment for skill-building without multiplayer
+
+### Audio & Anti-Cheat (NEW)
+- **Sound Engine** — Flashbang SFX, sabotage alarms, voting clock tick, lose jingle
+- **Anti-Cheat Keyboard Lockdown** — Ctrl+C/V/A/Z/X/Y disabled in the editor
+- **Ghost Chat** — Eliminated players can chat with other ghosts without spoiling the game
 
 ---
 
@@ -80,50 +89,77 @@ Here are the highest-impact features we should implement next to wow the judges:
 ## ✨ Features
 
 ### 🔐 Authentication & Profiles
-- **Firebase Authentication** — Secure email/password sign-in
-- **Player Profiles** — Track your wins, losses, and impostor history
-- **Stats Dashboard** — Visual breakdown of your performance across all games
+- **Firebase Authentication** — Google OAuth + Anonymous login for quick demos
+- **Player Profiles** — Customizable avatars (10+ styles), display names, rank badges
+- **Stats Dashboard** — GitXP progress bar, rank display, win rate, match history
 
 ### 🏠 Lobby & Room System
-- **Create & Join Rooms** — Share a game code with friends to instantly join
-- **Configurable Settings** — Choose coding language, round timer, and challenge difficulty
-- **Real-time Player List** — Watch players join/leave your lobby live with Socket.io
+- **Create & Join Rooms** — Share a 6-character room code with friends
+- **Configurable Settings** — Timer duration, difficulty, prompt selection (catalog or AI-generated)
+- **Real-time Player List** — Watch players join/leave with live Socket.IO updates
+- **5-Tab Navigation** — Lobby, Profile, Stats, Leaderboard, Rewards
 
 ### 🎭 Role System
-- **Secret Role Assignment** — Roles are assigned server-side and revealed with a cinematic **Framer Motion animation**
-- **Two Roles:** `Crewmate 🟦` and `Impostor 🔴` — each with a completely different UI and set of tools
+- **Secret Role Assignment** — Server-side randomization, revealed with cinematic Framer Motion animation
+- **Two Roles:** `Crewmate 🟦` and `Impostor 🔴` — completely different UIs and toolsets
+- **Information Asymmetry** — Only the impostor knows who they are
 
 ### 💻 Collaborative Code Editor
 - **Monaco Editor** — The same engine powering VS Code, embedded in the browser
-- **Real-time Sync via Yjs** — Conflict-free collaborative editing with CRDT technology (Y-WebSocket)
-- **Multi-Cursor Support** — See exactly where other players are typing
-- **Live In-Game Chat** — Communicate with teammates directly in the coding bay
-- **Language Support** — JavaScript, Python, C++, Java, and more via the Piston API
+- **Real-time Sync via Yjs** — CRDT-based conflict-free collaborative editing
+- **Multi-Cursor Support** — See exactly where every player is typing
+- **Live In-Game Chat** — Regular chat + Ghost chat for eliminated players
+- **Anti-Cheat** — Ctrl+C/V/A/Z/X/Y all disabled to prevent copy-pasting solutions
 
 ### 💣 Impostor Sabotage System
 The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating abilities:
-| Sabotage | Effect |
-|---|---|
-| 💥 **Flashbang** | Full-screen white flash blinds crewmates for 1.5 seconds |
-| 🔀 **Code Scramble** | Randomly rearranges lines in the shared editor |
-| 👻 **Cursor Ghosts** | Spawns phantom cursors to confuse everyone |
-| ⌛ **Lag Spike** | Artificially delays all keystrokes with CSS jitter |
+| Sabotage | Effect | Cooldown |
+|---|---|---|
+| 💥 **Flashbang** | 5-second solid white screen blinds all crewmates | 30s |
+| ✏️ **Typo Injection** | Randomly deletes 3 syntax characters from the code | 20s |
+| 👻 **Cursor Ghosting** | Hides the impostor's cursor for 10 seconds | 25s |
+| 🐌 **Lag Spike** | Freezes all crewmate keyboards for 3 seconds | 45s |
 
 ### 🗳️ Emergency Meeting & Voting
-- **Report Bug Button** — Any Crewmate can call an emergency meeting, pausing the game
-- **Democratic Voting** — Anonymous votes are cast against suspected Impostors
-- **Real-time Tally** — Results are aggregated and displayed live across all clients
-- **Ejection Ceremony** — The eliminated player is revealed with a dramatic animation
+- **Report Bug** — Any alive player can call an emergency meeting, pausing coding
+- **Democratic Voting** — Cast votes against suspected impostors or skip
+- **Real-time Tally** — Results aggregated and displayed live. Ties = no ejection
+- **Correct Vote Tracking** — Voting out the impostor earns +40 GitXP per voter
 
 ### 📤 Commit Proposal & Code Execution
-- **Propose Commit** — Crewmates can vote to lock in their solution and submit it
-- **Piston API Integration** — Code is securely executed in a sandboxed environment server-side
-- **Test Case Validation** — The solution is run against hidden test cases to determine the winner
+- **2-Chance Commit System** — Crewmates get 2 attempts to pass all test cases
+- **Consensus Vote** — Majority of crewmates must approve before code runs
+- **Piston API Sandbox** — Code executes in isolated Docker containers with 10s timeout
+- **15-Second Auto-Expiry** — Proposals expire if not enough votes are cast
 
-### 🏆 End Screens
-- **Crewmates Win** — If the Impostor is ejected or the correct code is committed
-- **Impostor Wins** — If the wrong code is committed or time runs out
-- **Animated Results** — Cinematic win/lose screens reveal everyone's role
+### 🤖 AI-Powered Features
+- **Oracle Hints** — AI-generated contextual debugging hints (costs -5 GitXP each)
+- **Problem Generator** — Hosts can create brand new challenges from any topic via OpenRouter
+- **20+ Prompt Catalog** — Curated challenges across easy/medium/hard difficulties
+
+### ⚡ GitXP Progression System
+- **XP Formula** — `50 (base) + 100 (win) + 15×bugs + 40×correctVotes + 10×sabotages + 25 (survived) + 5×tests - 5×hints`
+- **8 Ranks** — Intern (0 XP) → Junior Dev (500) → Mid-Level (1,500) → Senior Dev (4,000) → Tech Lead (8,000) → Staff Engineer (15,000) → Principal (30,000) → CTO (60,000)
+- **19 Rewards** — 11 titles + 8 avatar frames unlocked by rank or achievements
+- **Animated XP Breakdown** — Post-game screen shows line-by-line XP earned with rank-up celebration
+- **Server-Side Calculation** — XP is computed on the server to prevent client manipulation
+
+### 🏆 End Screens & Post-Game
+- **Win/Lose Screens** — Cinematic animations with role reveals for all players
+- **Match Highlights** — Superlatives like "Top Bug Reporter", "Sabotage Master", "Most Curious"
+- **Taunt System** — ~50 sarcastic messages injected on commit failures and game endings
+- **Real-Time Leaderboard** — Global ranking by GitXP with rank badges and progress bars
+
+### 🎵 Sound Engine
+- **Flashbang SFX** — Audio cue on sabotage activation
+- **Sabotage Alarm** — Alert sound for typo/ghost/lag sabotages
+- **Voting Clock Tick** — Ticking sound in last 10 seconds of voting
+- **Lose Jingle** — Plays when the impostor wins
+
+### 🏋️ Practice Mode
+- **Solo Debugging** — Practice solving challenges without multiplayer pressure
+- **AI or Catalog** — Choose from 20+ prompts or generate a new one with AI
+- **Same Editor & Test Runner** — Identical experience to multiplayer, minus the impostor
 
 ---
 
@@ -140,8 +176,8 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 │         │                 │                                    │
 │         │         ┌───────▼──────────┐                         │
 │         │         │   Custom Hooks   │                         │
-│         │         │  useYjs  useTimer│                         │
-│         │         │  useVoting       │                         │
+│         │         │  useYjs          │                         │
+│         │         │  useSoundManager │                         │
 │         │         └───────┬──────────┘                         │
 └─────────┼─────────────────┼────────────────────────────────────┘
           │                 │
@@ -154,14 +190,20 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 │  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
 │  │  REST API      │  │  Socket.io   │  │  YjsServer       │     │
 │  │  /api/auth     │  │  GameManager │  │  (Y-WebSocket)   │     │
-│  │  /api/games    │  │  Socket      │  │  /yjs endpoint   │     │
-│  │  /api/prompts  │  │  Handlers    │  └──────────────────┘     │
+│  │  /api/games    │  │  GameRoom    │  │  /yjs endpoint   │     │
+│  │  /api/prompts  │  │  Sabotage    │  └──────────────────┘     │
+│  │  /api/practice │  │  Manager     │                           │
 │  │  /api/reports  │  └──────────────┘                           │
 │  └────────────────┘                                             │
 │                                                                 │
 │  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
-│  │ Firebase Admin │  │  Piston API  │  │  Rate Limiter    │     │
-│  │  (Auth Verify) │  │ (Code Runner)│  │  + Helmet        │     │
+│  │ Firebase Admin │  │  Piston API  │  │ OpenRouter AI    │     │
+│  │ (Auth+Firestr) │  │ (Code Runner)│  │ (Hints+GenAI)   │     │
+│  └────────────────┘  └──────────────┘  └──────────────────┘     │
+│                                                                 │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │  Rate Limiter  │  │  GitXP Calc  │  │  Stats Service   │     │
+│  │  + Helmet      │  │  + Ranks     │  │  + Leaderboard   │     │
 │  └────────────────┘  └──────────────┘  └──────────────────┘     │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -204,70 +246,85 @@ The Impostor has access to a secret **Sabotage Dashboard** with 4 devastating ab
 ```
 CodeMongUs/
 ├── 📁 src/                          # Frontend source
-│   ├── App.jsx                      # Root component & routing
+│   ├── App.jsx                      # Root component & screen routing
 │   ├── main.jsx                     # React entry point
 │   ├── 📁 components/
-│   │   ├── 📁 auth/                 # Login, Register screens
+│   │   ├── 📁 auth/                 # Login screen (Google + Anonymous)
 │   │   ├── 📁 lobby/
-│   │   │   ├── LobbyScreen.jsx      # Pre-game lobby & room joining
-│   │   │   ├── GameSettings.jsx     # Language/timer config
+│   │   │   ├── LobbyScreen.jsx      # Pre-game lobby & room management
+│   │   │   ├── GameSettings.jsx     # Timer, difficulty, prompt selection
 │   │   │   ├── PlayerSlot.jsx       # Individual player card
 │   │   │   ├── ChatBox.jsx          # In-lobby chat
-│   │   │   ├── StatsPanel.jsx       # Player statistics display
-│   │   │   ├── ProfilePanel.jsx     # User profile & avatar
-│   │   │   └── NavBar.jsx           # Navigation bar
+│   │   │   ├── StatsPanel.jsx       # GitXP, rank progress, win rate
+│   │   │   ├── ProfilePanel.jsx     # User profile & avatar customization
+│   │   │   ├── NavBar.jsx           # 5-tab navigation bar
+│   │   │   ├── LeaderboardPanel.jsx # Real-time global leaderboard (NEW)
+│   │   │   └── RewardsPanel.jsx     # Rank roadmap & unlockable rewards (NEW)
 │   │   ├── 📁 game/
-│   │   │   ├── GameScreen.jsx       # Main game layout
-│   │   │   ├── CodeEditor.jsx       # Monaco + Yjs collaborative editor
-│   │   │   ├── RoleReveal.jsx       # Animated role reveal overlay
-│   │   │   ├── PlayerSidebar.jsx    # Live player list during game
-│   │   │   ├── CommitVotingModal.jsx # Commit proposal voting
-│   │   │   ├── GameEndScreen.jsx    # Win/lose result screen
+│   │   │   ├── GameScreen.jsx       # Main game layout with sabotage effects
+│   │   │   ├── CodeEditor.jsx       # Monaco + Yjs + anti-cheat shortcuts
+│   │   │   ├── RoleReveal.jsx       # Cinematic role reveal animation
+│   │   │   ├── PlayerSidebar.jsx    # Live player status (alive/eliminated)
+│   │   │   ├── CommitVotingModal.jsx # Commit consensus voting
+│   │   │   ├── GameEndScreen.jsx    # Win/lose + XP breakdown + rank-up (UPDATED)
 │   │   │   ├── ActionButtons.jsx    # In-game action controls
-│   │   │   └── Timer.jsx            # Countdown timer
+│   │   │   └── Timer.jsx            # Server-synced countdown display
 │   │   ├── 📁 impostor/
 │   │   │   └── ImpostorDashboard.jsx # Secret sabotage control panel
+│   │   ├── 📁 practice/
+│   │   │   └── PracticeScreen.jsx   # Solo debugging mode (NEW)
 │   │   ├── 📁 voting/
 │   │   │   └── VotingModal.jsx      # Emergency meeting & ejection UI
-│   │   └── 📁 common/               # Shared UI components
+│   │   └── 📁 common/               # Shared UI: Avatar, Button, Modal
 │   ├── 📁 hooks/
-│   │   ├── useYjs.js                # Yjs + Monaco binding hook
-│   │   ├── useTimer.js              # Countdown timer hook
-│   │   └── useVoting.js             # Voting state & socket hook
+│   │   ├── useYjs.js                # Yjs + Monaco binding + cursor awareness
+│   │   └── useSoundManager.js       # Centralized audio engine (NEW)
 │   ├── 📁 services/
-│   │   └── socket.js                # Socket.io client singleton
-│   ├── 📁 store/                    # Zustand game state stores
+│   │   ├── socket.js                # Socket.IO client singleton
+│   │   └── firestoreService.js      # Firestore user docs + leaderboard listener
+│   ├── 📁 store/
+│   │   └── gameStore.js             # Zustand store (600+ lines of game state)
+│   ├── 📁 utils/
+│   │   ├── rankUtils.js             # Client-side rank/reward helpers (NEW)
+│   │   └── avatarGenerator.js       # DiceBear avatar URL builder
 │   ├── 📁 config/                   # Firebase client config
 │   └── 📁 styles/                   # Global CSS & Tailwind config
 │
 ├── 📁 server/                       # Backend source
 │   └── 📁 src/
-│       ├── server.js                # Express + Socket.io + Yjs entry point
+│       ├── server.js                # Express + Socket.IO + Yjs entry point
 │       ├── 📁 config/
-│       │   └── firebase.js          # Firebase Admin initialization
+│       │   └── firebase.js          # Firebase Admin SDK initialization
 │       ├── 📁 middleware/
-│       │   └── auth.js              # Socket auth middleware (JWT verify)
-│       ├── 📁 routes/               # REST API route handlers
-│       │   ├── auth.js              # /api/auth
+│       │   └── auth.js              # Socket/REST auth (Firebase JWT verify)
+│       ├── 📁 routes/
+│       │   ├── auth.js              # /api/auth (profile sync)
 │       │   ├── users.js             # /api/users
 │       │   ├── games.js             # /api/games
-│       │   ├── prompts.js           # /api/prompts
+│       │   ├── prompts.js           # /api/prompts (catalog + AI generation)
+│       │   ├── practice.js          # /api/practice (solo mode) (NEW)
 │       │   └── reports.js           # /api/reports
 │       ├── 📁 game/
-│       │   ├── GameManager.js       # Room lifecycle, roles, win conditions
-│       │   └── socketHandlers.js    # All Socket.io event handlers
+│       │   ├── GameManager.js       # Room lifecycle management
+│       │   ├── GameRoom.js          # Core game logic (750+ lines)
+│       │   ├── TimerManager.js      # Server-authoritative timer
+│       │   ├── SabotageManager.js   # 4-ability sabotage system
+│       │   └── socketHandlers.js    # Socket.IO event handlers
 │       ├── 📁 services/
-│       │   ├── yjsServer.js         # Y-WebSocket collaborative server
-│       │   ├── piston.js            # Code execution via Piston API
-│       │   └── statsService.js      # Player stats aggregation
-│       ├── 📁 models/               # Data models
-│       ├── 📁 data/                 # Seeded DSA challenge prompts
+│       │   ├── yjsServer.js         # Y-WebSocket CRDT server
+│       │   ├── piston.js            # Sandboxed code execution
+│       │   ├── statsService.js      # Post-game stats + GitXP persistence
+│       │   ├── aiService.js         # OpenRouter AI integration (NEW)
+│       │   └── problemGenerator.js  # AI problem generation (NEW)
+│       ├── 📁 data/
+│       │   ├── promptCatalog.js     # 20+ hardcoded challenges
+│       │   ├── ranks.js             # XP table, ranks, rewards, calculator (NEW)
+│       │   └── taunts.js            # ~50 sarcastic game messages (NEW)
+│       ├── 📁 models/               # Firestore data models
 │       └── 📁 seeds/                # Database seed scripts
 │
-├── Dockerfile                       # Full-stack Docker image
-├── Dockerfile.backend               # Backend-only Docker image
-├── nginx.conf                       # Nginx reverse proxy config
-├── vercel.json                      # Vercel frontend deployment config
+├── vercel.json                      # Vercel frontend config
+├── Dockerfile.backend               # Backend Docker image
 └── vite.config.js                   # Vite build configuration
 ```
 
@@ -441,15 +498,19 @@ The UI follows a custom **Neobrutalist "High-Tech Toybox"** design system:
 
 | Component | Role |
 |---|---|
-| `LobbyScreen.jsx` | Room creation, player list, game settings, chat |
-| `GameScreen.jsx` | Main game layout — orchestrates all game-phase views |
-| `CodeEditor.jsx` | Monaco editor with Yjs binding, sabotage effects, cursor tracking |
+| `LobbyScreen.jsx` | Room creation/joining, tab routing, game settings, chat |
+| `GameScreen.jsx` | Main game layout — editor, sidebar, sabotage effects, sound |
+| `CodeEditor.jsx` | Monaco editor with Yjs binding, anti-cheat, sabotage effects |
 | `RoleReveal.jsx` | Cinematic full-screen role animation at game start |
-| `ImpostorDashboard.jsx` | Secret sabotage control panel (only rendered for the Impostor) |
+| `ImpostorDashboard.jsx` | Secret sabotage control panel (only rendered for Impostor) |
 | `VotingModal.jsx` | Emergency meeting — vote cards, timer, real-time tallying |
-| `CommitVotingModal.jsx` | Consensus vote to submit & execute the current code |
-| `GameEndScreen.jsx` | Animated win/lose screen with role reveals for all players |
-| `Timer.jsx` | Countdown with warning pulse animation under 10 seconds |
+| `CommitVotingModal.jsx` | 2-chance consensus vote to submit & execute code |
+| `GameEndScreen.jsx` | Win/lose + XP breakdown + rank progress + rank-up animation |
+| `LeaderboardPanel.jsx` | Real-time global leaderboard ranked by GitXP |
+| `RewardsPanel.jsx` | Rank roadmap + 19 unlockable rewards grid |
+| `StatsPanel.jsx` | Player stats with GitXP, rank badge, progress bar |
+| `PracticeScreen.jsx` | Solo debugging mode with AI or catalog prompts |
+| `Timer.jsx` | Server-synced countdown with warning pulse under 10s |
 | `PlayerSidebar.jsx` | Live player status tracker (alive / eliminated) |
 
 ---
@@ -460,29 +521,25 @@ The production stack uses:
 
 | Service | Hosts |
 |---|---|
-| **Netlify** | React frontend (`codemongus.netlify.app`) |
-| **Replit / Railway** | Node.js + Socket.io backend |
-| **Firebase** | Authentication & token verification |
+| **Vercel** | React frontend (global CDN, auto-deploys from git) |
+| **Railway** | Node.js + Socket.IO backend (WebSocket support, auto-scaling) |
+| **Firebase** | Authentication (Google OAuth) + Firestore database |
 | **Piston API** | Sandboxed code execution (external) |
+| **OpenRouter** | AI hints & problem generation (external) |
 
-### Deploying the Frontend (Netlify)
+### Frontend (Vercel)
 
-```bash
-npm run build
-# Deploy the generated /dist folder to Netlify
-# Set your VITE_* environment variables in the Netlify dashboard
-```
+1. Import repo → Framework: **Vite**, Output: **dist**
+2. Set env vars: `VITE_API_URL` + all `VITE_FIREBASE_*` variables
+3. Deploy — `vercel.json` handles SPA rewrites + COOP headers
 
-### Deploying the Backend
+### Backend (Railway)
 
-The backend includes a `Dockerfile.backend` for containerized deployments:
+1. Root Directory: `/server` or use `Dockerfile.backend`
+2. Set env vars: `FIREBASE_SERVICE_ACCOUNT` (full JSON), `PISTON_API_URL`, `OPENROUTER_API_KEY`, `CORS_ORIGIN`
+3. Deploy — auto-builds on git push
 
-```bash
-docker build -f Dockerfile.backend -t codemongus-server ./server
-# Push to your container registry and deploy on Railway, Fly.io, or Render
-```
-
-> 📝 Make sure to set `FRONTEND_URL` on the backend to your Netlify URL to allow CORS from production.
+> 📝 Set `CORS_ORIGIN` on Railway to your Vercel URL to allow cross-origin requests.
 
 ---
 
