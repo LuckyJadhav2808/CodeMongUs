@@ -35,10 +35,10 @@ const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '';
 
-// Build allowed origins list
 const allowedOrigins = [
   FRONTEND_URL,
   CORS_ORIGIN,
+  'https://code-mong-us.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
   'https://codemongus.netlify.app',
