@@ -39,6 +39,7 @@ const allowedOrigins = [
   FRONTEND_URL,
   CORS_ORIGIN,
   'https://code-mong-us.vercel.app',
+  'https://codemongus.onrender.com',
   'http://localhost:5173',
   'http://localhost:3000',
   'https://codemongus.netlify.app',
