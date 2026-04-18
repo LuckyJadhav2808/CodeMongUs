@@ -1,6 +1,5 @@
 node_modules
 dist
-src
 npm-debug.log*
 .env
 .env.local
