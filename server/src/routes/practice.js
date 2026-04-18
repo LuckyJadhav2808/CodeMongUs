@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { verifyToken } from '../middleware/auth.js';
 import { resolvePromptForGame, getCatalogList } from '../data/promptCatalog.js';
-import { executeCode } from '../services/piston.js';
+import { executeCode } from '../services/localExecutor.js';
 import { askOracle } from '../services/aiService.js';
 
 const router = Router();

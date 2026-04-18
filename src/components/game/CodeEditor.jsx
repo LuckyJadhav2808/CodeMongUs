@@ -14,7 +14,7 @@ function bindYTextToMonaco(yText, yDoc, editor) {
   // change event that would be sent back over the network.
   let isMutexLocked = false;
   const model = editor.getModel();
-  if (!model) return { destroy: () => {} };
+  if (!model) return { destroy: () => { } };
 
   // Sync initial content from Y.Text → Monaco
   const initialContent = yText.toString();
@@ -99,8 +99,12 @@ function bindYTextToMonaco(yText, yDoc, editor) {
   };
 }
 
+// Track which game sessions have already had starter code injected.
+// Module-level so it survives React strict-mode remounts.
+const injectedSessions = new Set();
+
 export default function CodeEditor() {
-  const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings, setEditorCode } = useGameStore();
+  const { activeSabotage, prompt, players, roomCode, profile, user, gameSettings, setEditorCode, hostUid, gameStartTime } = useGameStore();
   const displayName = profile?.displayName || user?.name || 'Player';
 
   // Determine if this player is a ghost (eliminated or left)
@@ -263,12 +267,13 @@ export default function CodeEditor() {
     const model = editor.getModel();
     if (!model) return;
 
-    // Only inject starter code if:
-    // 1. Y.Text is still empty (no peers have written yet)
-    // 2. We have starter code to inject
-    // 3. We haven't already injected it in this session
-    if (yText.length === 0 && prompt?.starterCode && !starterInjectedRef.current) {
-      starterInjectedRef.current = true;
+    // Only the HOST injects starter code to prevent N-client duplication.
+    // The session key prevents React strict-mode double-mounts from injecting twice.
+    const isHost = user?.uid === hostUid;
+    const sessionKey = `${roomCode}-${gameStartTime}`;
+
+    if (isHost && yText.length === 0 && prompt?.starterCode && !injectedSessions.has(sessionKey)) {
+      injectedSessions.add(sessionKey);
       yDoc.transact(() => {
         yText.insert(0, prompt.starterCode);
       });
@@ -309,7 +314,7 @@ export default function CodeEditor() {
     // Disable clipboard and undo shortcuts to prevent copy-paste cheating
     const KeyMod = monaco.KeyMod;
     const KeyCode = monaco.KeyCode;
-    const noop = () => {};
+    const noop = () => { };
 
     // Ctrl+C (Copy)
     editor.addCommand(KeyMod.CtrlCmd | KeyCode.KeyC, noop);

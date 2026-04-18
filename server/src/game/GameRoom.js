@@ -5,7 +5,7 @@ import * as UserModel from '../models/User.js';
 import { getRandomPrompt, trackUsage } from '../models/Prompt.js';
 import { resolvePromptForGame, getRandomCatalogPrompt } from '../data/promptCatalog.js';
 import { processPostGame } from '../services/statsService.js';
-import { executeCode } from '../services/piston.js';
+import { executeCode } from '../services/localExecutor.js';
 import { askOracle } from '../services/aiService.js';
 import { getRandomTaunt } from '../data/taunts.js';
 import { calculateXpEarned, getRankForXp } from '../data/ranks.js';

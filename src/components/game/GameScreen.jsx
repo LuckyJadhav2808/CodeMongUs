@@ -26,8 +26,25 @@ export default function GameScreen() {
     prevTimerRef.current = timerSeconds;
   }, [timerSeconds, codingStarted]);
 
+  // Reset timerExpired when a new coding phase begins (timer jumps back up)
+  // This clears the stale flag left over from a voting-phase timer reaching 0
+  useEffect(() => {
+    if (timerExpired && timerSeconds > 30) {
+      setTimerExpired(false);
+    }
+  }, [timerSeconds, timerExpired]);
+
+  // Also reset timerExpired whenever the voting modal closes, so the
+  // "TIME'S UP" overlay never appears after a voting round ends
+  useEffect(() => {
+    if (!showVoting) {
+      setTimerExpired(false);
+    }
+  }, [showVoting]);
+
   const handleTimerExpire = () => {
     if (!codingStarted) return; // ignore expiry before coding phase
+    if (showVoting) return;     // ignore expiry during voting phase
     setTimerExpired(true);
   };
 
